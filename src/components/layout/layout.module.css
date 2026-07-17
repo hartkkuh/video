@@ -1,0 +1,43 @@
+.layoutShell {
+  width: 100%;
+  height: 100vh;
+  max-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.navbarRegion {
+  position: relative;
+  z-index: 5000;
+  flex: 0 0 10%;
+  min-height: 0;
+  max-height: 10%;
+  display: flex;
+  overflow: hidden;
+}
+
+.navbarRegion > * {
+  flex: 1;
+  min-height: 0;
+}
+
+.content {
+  flex: 1;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  max-height: 90%;
+}
+
+.contentScrollable {
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+:global(.app-shell).contentScrollable > * {
+  flex: 0 0 auto;
+  min-height: auto;
+}

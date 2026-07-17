@@ -1,0 +1,228 @@
+.page {
+	width: 100%;
+	padding: 22px;
+	box-sizing: border-box;
+	display: flex;
+	flex-direction: column;
+}
+
+.card {
+	width: 100%;
+	display: flex;
+	flex-direction: column;
+	align-items: stretch;
+	gap: 16px;
+	padding: 22px;
+	border-radius: 22px;
+	background: var(--surface-soft);
+	border: 1px solid var(--surface-border-strong);
+	box-sizing: border-box;
+}
+
+.header {
+	display: grid;
+	gap: 8px;
+}
+
+.kicker {
+	margin: 0;
+	font-size: 0.78rem;
+	letter-spacing: 0.22em;
+	text-transform: uppercase;
+	color: var(--accent);
+}
+
+.title {
+	margin: 0;
+	font-size: clamp(1.7rem, 3vw, 2.4rem);
+	line-height: 1.05;
+}
+
+.description {
+	margin: 0;
+	max-width: 60ch;
+	color: var(--text-secondary);
+}
+
+.tabs {
+	display: inline-flex;
+	gap: 6px;
+	padding: 6px;
+	border-radius: 16px;
+	background: var(--button-bg);
+	border: 1px solid var(--surface-border);
+	width: fit-content;
+}
+
+.tab {
+	border: 0;
+	border-radius: 12px;
+	padding: 10px 20px;
+	background: transparent;
+	color: var(--text-secondary);
+	cursor: pointer;
+	font: inherit;
+	font-weight: 700;
+	transition: background 160ms ease, color 160ms ease;
+}
+
+.tab:hover {
+	color: var(--text-primary);
+}
+
+.tabActive {
+	background: var(--button-active-bg, linear-gradient(135deg, var(--accent-soft), rgba(103, 168, 255, 0.12)));
+	color: var(--text-primary);
+	border: 1px solid var(--accent-border);
+}
+
+.tabPanel {
+	display: block;
+}
+
+.panel {
+	display: grid;
+	gap: 12px;
+}
+
+.note {
+	margin: 0;
+	padding: 24px;
+	border-radius: 16px;
+	border: 1px dashed var(--surface-border);
+	background: var(--button-bg);
+	color: var(--text-secondary);
+	text-align: center;
+}
+
+/* Definition lists */
+.detailList {
+	margin: 0;
+	display: grid;
+	gap: 2px;
+	border-radius: 16px;
+	border: 1px solid var(--surface-border);
+	overflow: hidden;
+}
+
+.detailRow {
+	display: grid;
+	grid-template-columns: minmax(120px, 200px) 1fr;
+	gap: 12px;
+	padding: 11px 16px;
+	background: var(--button-bg);
+}
+
+.detailRow:nth-child(odd) {
+	background: var(--surface-soft);
+}
+
+.detailLabel {
+	margin: 0;
+	color: var(--text-secondary);
+	font-weight: 700;
+}
+
+.detailValue {
+	margin: 0;
+	color: var(--text-primary);
+	word-break: break-word;
+}
+
+/* Encoding track cards */
+.trackGrid {
+	display: grid;
+	gap: 14px;
+	grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+}
+
+.trackCard {
+	display: grid;
+	gap: 12px;
+	padding: 16px;
+	border-radius: 18px;
+	border: 1px solid var(--surface-border);
+	background: var(--button-bg);
+}
+
+.trackHeader {
+	display: flex;
+	align-items: center;
+	gap: 10px;
+	flex-wrap: wrap;
+}
+
+.trackBadge {
+	display: inline-flex;
+	align-items: center;
+	padding: 4px 12px;
+	border-radius: 999px;
+	font-size: 0.82rem;
+	font-weight: 800;
+	letter-spacing: 0.04em;
+	border: 1px solid var(--accent-border);
+	background: var(--accent-soft);
+	color: var(--text-primary);
+}
+
+.badge_video {
+	border-color: rgba(103, 168, 255, 0.5);
+	background: rgba(103, 168, 255, 0.16);
+}
+
+.badge_audio {
+	border-color: rgba(126, 231, 200, 0.5);
+	background: rgba(126, 231, 200, 0.16);
+}
+
+.badge_subtitle {
+	border-color: rgba(255, 195, 113, 0.5);
+	background: rgba(255, 195, 113, 0.16);
+}
+
+.trackName {
+	color: var(--text-secondary);
+	font-size: 0.9rem;
+	word-break: break-word;
+}
+
+.backRow {
+	display: flex;
+	justify-content: flex-start;
+	margin-top: 4px;
+}
+
+.backButton {
+	border: 1px solid var(--button-border);
+	border-radius: 14px;
+	padding: 10px 16px;
+	background: var(--button-bg);
+	color: var(--text-primary);
+	cursor: pointer;
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	text-decoration: none;
+	font-weight: 700;
+	transition: transform 160ms ease, background 160ms ease;
+}
+
+.backButton:hover {
+	transform: translateY(-1px);
+	background: var(--button-bg-hover);
+}
+
+@media (max-width: 860px) {
+	.page {
+		padding: 18px;
+	}
+
+	.card {
+		padding: 18px;
+	}
+
+	.detailRow {
+		grid-template-columns: 1fr;
+		gap: 2px;
+	}
+}

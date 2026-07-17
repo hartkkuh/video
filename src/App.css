@@ -1,0 +1,84 @@
+main {
+	width: 100%;
+}
+
+.app-shell {
+	flex: 1;
+	min-height: 0;
+	width: 100%;
+	display: flex;
+	flex-direction: column;
+	justify-content: flex-start;
+	padding: 0;
+	position: relative;
+	overflow: hidden;
+}
+
+.app-shell > * {
+	flex: 1;
+	width: 100%;
+	min-height: 0;
+	display: flex;
+	flex-direction: column;
+}
+
+.app-shell::before,
+.app-shell::after {
+	content: '';
+	position: absolute;
+	border-radius: 999px;
+	pointer-events: none;
+	filter: blur(14px);
+	opacity: 0.55;
+}
+
+.app-shell::before {
+	top: -90px;
+	left: -40px;
+	width: 260px;
+	height: 260px;
+	background: radial-gradient(circle, var(--app-glow-primary), transparent 68%);
+}
+
+.app-shell::after {
+	right: -100px;
+	bottom: 10%;
+	width: 320px;
+	height: 320px;
+	background: radial-gradient(circle, var(--app-glow-secondary), transparent 70%);
+}
+
+.language-switcher {
+	position: fixed;
+	top: 16px;
+	inset-inline-end: 16px;
+	z-index: 10;
+	display: inline-flex;
+	gap: 6px;
+	padding: 4px;
+	border-radius: 999px;
+	background: var(--surface-strong);
+	border: 1px solid var(--surface-border);
+	box-shadow: 0 8px 24px var(--surface-shadow);
+}
+
+.language-switcher button {
+	border: 1px solid transparent;
+	border-radius: 999px;
+	padding: 6px 12px;
+	background: transparent;
+	color: var(--text-secondary);
+	cursor: pointer;
+	transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+}
+
+.language-switcher button:hover {
+	background: var(--button-bg-hover);
+	color: var(--text-primary);
+}
+
+.language-switcher button.active {
+	background: var(--button-active-bg);
+	border-color: var(--button-active-border);
+	color: var(--text-primary);
+}

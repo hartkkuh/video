@@ -1,0 +1,15 @@
+.root {
+	position: relative;
+	width: 100vw;
+	height: 100vh;
+	margin: 0;
+	overflow: hidden;
+	background: transparent;
+	pointer-events: none;
+}
+
+/* Re-enable pointer events only on the controls themselves so the rest of the
+   transparent window stays click-through to the video underneath. */
+.root :global([data-player-controls-overlay]) {
+	pointer-events: auto;
+}

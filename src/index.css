@@ -1,0 +1,94 @@
+:root {
+	color-scheme: dark;
+	font-family: Inter, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+	line-height: 1.5;
+	font-weight: 400;
+	--background: #0b1020;
+	--background-alt: #121b34;
+	--app-glow-primary: rgba(126, 231, 200, 0.18);
+	--app-glow-secondary: rgba(100, 126, 255, 0.16);
+	--surface: rgba(255, 255, 255, 0.04);
+	--surface-strong: rgba(10, 16, 32, 0.88);
+	--surface-soft: rgba(255, 255, 255, 0.03);
+	--surface-border: rgba(255, 255, 255, 0.12);
+	--surface-border-strong: rgba(255, 255, 255, 0.08);
+	--surface-shadow: rgba(0, 0, 0, 0.38);
+	--text-primary: #f5f7ff;
+	--text-secondary: #b7bfd8;
+	--muted-text: #d0d7ea;
+	--accent: #7ee7c8;
+	--accent-soft: rgba(126, 231, 200, 0.12);
+	--accent-border: rgba(126, 231, 200, 0.55);
+	--accent-strong: rgba(126, 231, 200, 0.18);
+	--button-bg: rgba(255, 255, 255, 0.05);
+	--button-bg-hover: rgba(255, 255, 255, 0.08);
+	--button-border: rgba(255, 255, 255, 0.12);
+	--button-active-bg: linear-gradient(135deg, rgba(126, 231, 200, 0.18), rgba(103, 168, 255, 0.2));
+	--button-active-border: rgba(126, 231, 200, 0.4);
+	--control-overlay: linear-gradient(180deg, rgba(6, 10, 18, 0) 0%, rgba(6, 10, 18, 0.78) 28%, rgba(6, 10, 18, 0.94) 100%);
+	--control-surface: rgba(255, 255, 255, 0.05);
+	--menu-surface: rgba(10, 16, 32, 0.96);
+	--menu-border: rgba(255, 255, 255, 0.16);
+	--menu-shadow: rgba(0, 0, 0, 0.55);
+}
+
+html[data-theme='light'] {
+	color-scheme: light;
+	--background: #f3f6fb;
+	--background-alt: #e5edf8;
+	--app-glow-primary: rgba(50, 182, 150, 0.22);
+	--app-glow-secondary: rgba(71, 117, 214, 0.18);
+	--surface: rgba(255, 255, 255, 0.78);
+	--surface-strong: rgba(255, 255, 255, 0.92);
+	--surface-soft: rgba(255, 255, 255, 0.66);
+	--surface-border: rgba(33, 55, 92, 0.12);
+	--surface-border-strong: rgba(33, 55, 92, 0.09);
+	--surface-shadow: rgba(29, 50, 88, 0.12);
+	--text-primary: #11203a;
+	--text-secondary: #51627d;
+	--muted-text: #5d6f8d;
+	--accent: #0ea57a;
+	--accent-soft: rgba(14, 165, 122, 0.12);
+	--accent-border: rgba(14, 165, 122, 0.3);
+	--accent-strong: rgba(14, 165, 122, 0.18);
+	--button-bg: rgba(255, 255, 255, 0.78);
+	--button-bg-hover: rgba(255, 255, 255, 0.95);
+	--button-border: rgba(33, 55, 92, 0.14);
+	--button-active-bg: linear-gradient(135deg, rgba(14, 165, 122, 0.16), rgba(71, 117, 214, 0.14));
+	--button-active-border: rgba(14, 165, 122, 0.34);
+	--control-overlay: linear-gradient(180deg, rgba(243, 246, 251, 0) 0%, rgba(243, 246, 251, 0.76) 28%, rgba(243, 246, 251, 0.96) 100%);
+	--control-surface: rgba(255, 255, 255, 0.82);
+	--menu-surface: rgba(255, 255, 255, 0.97);
+	--menu-border: rgba(33, 55, 92, 0.16);
+	--menu-shadow: rgba(29, 50, 88, 0.22);
+}
+
+* {
+	box-sizing: border-box;
+}
+
+html {
+	min-height: 100%;
+}
+
+body {
+	margin: 0;
+	min-width: 320px;
+	min-height: 100vh;
+	color: var(--text-primary);
+	background:
+		radial-gradient(circle at top left, var(--app-glow-primary), transparent 34%),
+		radial-gradient(circle at right bottom, var(--app-glow-secondary), transparent 28%),
+		linear-gradient(160deg, var(--background), var(--background-alt));
+}
+
+button,
+input,
+textarea,
+select {
+	font: inherit;
+}
+
+a {
+	color: inherit;
+}

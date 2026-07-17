@@ -1,0 +1,226 @@
+.navbar {
+	position: relative;
+	z-index: 3000;
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 12px;
+	width: 100%;
+	height: 100%;
+	padding: 6px 22px;
+	border-bottom: 1px solid var(--surface-border-strong);
+	color: var(--text-primary);
+	isolation: isolate;
+	overflow: hidden;
+	box-sizing: border-box;
+}
+
+.brandGroup {
+	display: grid;
+	gap: 4px;
+}
+
+.brandRow {
+	display: flex;
+	align-items: center;
+	gap: 18px;
+}
+
+.brandMark {
+	width: min(10vh, 72px);
+	height: min(10vh, 72px);
+	border-radius: 16px;
+	object-fit: contain;
+	padding: 0;
+	background: transparent;
+	box-shadow: 0 8px 20px rgba(0, 0, 0, 0.22);
+	flex: none;
+	transform: none;
+	transform-origin: center center;
+}
+
+.brand {
+	margin: 0 0 4px;
+	font-size: 0.78rem;
+	letter-spacing: 0.22em;
+	text-transform: uppercase;
+	color: var(--accent);
+}
+
+.title {
+	margin: 0;
+	font-size: 1.35rem;
+	line-height: 1.1;
+}
+
+.actions {
+	position: relative;
+	z-index: 3001;
+	display: flex;
+	align-items: center;
+	gap: 12px;
+	flex-wrap: wrap;
+}
+
+.menuWrap {
+	position: relative;
+	z-index: 3002;
+}
+
+.submenuWrap {
+	position: relative;
+}
+
+.menuButton,
+.settingsButton {
+	border: 1px solid var(--button-border);
+	border-radius: 14px;
+	padding: 11px 16px;
+	background: var(--button-bg);
+	color: var(--text-primary);
+	cursor: pointer;
+	font-weight: 700;
+	text-decoration: none;
+	transition: transform 160ms ease, background 160ms ease, border-color 160ms ease;
+}
+
+.menuButton:hover,
+.settingsButton:hover {
+	transform: translateY(-1px);
+	background: var(--button-bg-hover);
+}
+
+.settingsButtonActive {
+	background: var(--button-active-bg);
+	border-color: var(--button-active-border);
+}
+
+.settingsButtonActive {
+	background: var(--button-active-bg);
+	border-color: var(--button-active-border);
+}
+
+.menu,
+.menuPortal {
+	min-width: 220px;
+	padding: 8px;
+	border-radius: 18px;
+	background: var(--menu-surface);
+	border: 1px solid var(--menu-border);
+	box-shadow: 0 22px 44px var(--menu-shadow), 0 0 0 1px rgba(0, 0, 0, 0.18);
+	backdrop-filter: blur(18px) saturate(140%);
+	-webkit-backdrop-filter: blur(18px) saturate(140%);
+	display: grid;
+	gap: 6px;
+}
+
+.menu {
+	position: absolute;
+	top: calc(100% + 10px);
+	right: 0;
+	z-index: 10000;
+}
+
+.menuPortal {
+	position: fixed;
+	pointer-events: auto;
+	z-index: 10000;
+}
+
+.menuItem {
+	display: block;
+	width: 100%;
+	border: 0;
+	padding: 12px 14px;
+	border-radius: 12px;
+	background: transparent;
+	color: var(--text-primary);
+	text-align: start;
+	cursor: pointer;
+	font: inherit;
+	transition: background 160ms ease;
+}
+
+.menuItem:hover {
+	background: var(--button-bg-hover);
+}
+
+.submenu {
+	position: absolute;
+	top: 0;
+	left: calc(100% + 10px);
+	min-width: 220px;
+	padding: 8px;
+	border-radius: 18px;
+	background: var(--menu-surface);
+	border: 1px solid var(--menu-border);
+	box-shadow: 0 22px 44px var(--menu-shadow), 0 0 0 1px rgba(0, 0, 0, 0.18);
+	backdrop-filter: blur(18px) saturate(140%);
+	-webkit-backdrop-filter: blur(18px) saturate(140%);
+	z-index: 10001;
+	display: grid;
+	gap: 6px;
+}
+
+.submenuAccordion {
+	position: static;
+	inset: auto;
+	width: 100%;
+	min-width: 0;
+	margin-top: 4px;
+	padding: 4px 4px 4px 10px;
+	border-radius: 12px;
+	background: var(--button-bg);
+	border: 0;
+	box-shadow: none;
+	backdrop-filter: none;
+	-webkit-backdrop-filter: none;
+	z-index: auto;
+	display: grid;
+	gap: 4px;
+}
+
+.submenuItem {
+	display: block;
+	width: 100%;
+	border: 0;
+	padding: 12px 14px;
+	border-radius: 12px;
+	background: transparent;
+	color: var(--text-primary);
+	text-align: start;
+	cursor: pointer;
+	transition: background 160ms ease;
+}
+
+.submenuItem:hover {
+	background: var(--button-bg-hover);
+}
+
+@media (max-width: 860px) {
+	.navbar {
+		flex-direction: column;
+		align-items: flex-start;
+		padding: 18px;
+	}
+
+	.actions {
+		width: 100%;
+	}
+
+	.brandRow {
+		align-items: flex-start;
+	}
+
+	.menu,
+	.settingsButton,
+	.menuButton {
+		width: 100%;
+	}
+
+	.menu {
+		right: auto;
+		left: 0;
+		top: calc(100% + 10px);
+	}
+}

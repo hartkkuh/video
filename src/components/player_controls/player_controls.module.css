@@ -1,0 +1,633 @@
+/* Windowed: the controls sit in their own band BELOW the 16:9 media frame, so
+   the video can fill the frame completely (the native libVLC window draws above
+   the UI, so anything it overlaps would hide the controls / show as black). */
+.overlay {
+	position: relative;
+	padding: 10px 12px 12px;
+	z-index: 2;
+	opacity: 1;
+	transition: opacity 280ms ease;
+}
+
+/* Floating (overlay placement or fullscreen): float the controls over the
+   video and auto-hide so the video can fill the whole frame. */
+.overlayFloating {
+	position: absolute;
+	border-radius: 0;
+	backdrop-filter: blur(4px);
+}
+
+.overlayFloatingBottom {
+	inset-inline: 0;
+	bottom: 0;
+	background: linear-gradient(180deg, rgba(6, 10, 18, 0) 0%, rgba(6, 10, 18, 0.28) 35%, rgba(6, 10, 18, 0.52) 100%);
+}
+
+.overlayFloatingTop {
+	inset-inline: 0;
+	top: 0;
+	background: linear-gradient(0deg, rgba(6, 10, 18, 0) 0%, rgba(6, 10, 18, 0.28) 35%, rgba(6, 10, 18, 0.52) 100%);
+}
+
+.overlayFloatingTop .volumeMenu,
+.overlayFloatingTop .speedMenu {
+	top: calc(100% + 8px);
+	bottom: auto;
+}
+
+.overlayHidden {
+	opacity: 0;
+	pointer-events: none;
+}
+
+.overlay .bottomBarSolid {
+	padding: 10px 12px;
+	background: rgba(10, 16, 32, 0.38);
+	border: 1px solid rgba(255, 255, 255, 0.08);
+	border-radius: 16px;
+	box-shadow: none;
+}
+
+.overlay .bottomBarMinimal {
+	padding: 4px 0 0;
+}
+
+.overlay .iconButton,
+.overlay .iconButtonPrimary,
+.overlay .iconButtonActive {
+	background: rgba(255, 255, 255, 0.1);
+	border-color: rgba(255, 255, 255, 0.12);
+}
+
+.overlay .volumeRow {
+	background: rgba(255, 255, 255, 0.08);
+	border-color: rgba(255, 255, 255, 0.1);
+}
+
+html[data-theme='light'] .overlayFloatingBottom {
+	background: linear-gradient(180deg, rgba(243, 246, 251, 0) 0%, rgba(243, 246, 251, 0.34) 35%, rgba(243, 246, 251, 0.58) 100%);
+}
+
+html[data-theme='light'] .overlayFloatingTop {
+	background: linear-gradient(0deg, rgba(243, 246, 251, 0) 0%, rgba(243, 246, 251, 0.34) 35%, rgba(243, 246, 251, 0.58) 100%);
+}
+
+html[data-theme='light'] .overlay .bottomBarSolid {
+	background: rgba(255, 255, 255, 0.42);
+	border-color: rgba(33, 55, 92, 0.1);
+}
+
+html[data-theme='light'] .overlay .iconButton,
+html[data-theme='light'] .overlay .iconButtonPrimary,
+html[data-theme='light'] .overlay .iconButtonActive {
+	background: rgba(255, 255, 255, 0.55);
+	border-color: rgba(33, 55, 92, 0.12);
+}
+
+html[data-theme='light'] .overlay .volumeRow {
+	background: rgba(255, 255, 255, 0.5);
+	border-color: rgba(33, 55, 92, 0.1);
+}
+
+.bottomBar {
+	display: flex;
+	flex-direction: column;
+	gap: 14px;
+	transition: background 160ms ease, border-color 160ms ease, box-shadow 160ms ease, padding 160ms ease;
+}
+
+.bottomBarSolid {
+	padding: 14px;
+	background: var(--surface-strong);
+	border: 1px solid var(--surface-border);
+	border-radius: 20px;
+	box-shadow: 0 18px 36px var(--surface-shadow);
+}
+
+.bottomBarMinimal {
+	padding: 6px 0 0;
+	background: transparent;
+	border: 0;
+	backdrop-filter: none;
+}
+
+.bottomBarControlsAbove .controlsRow {
+	order: 1;
+}
+
+.bottomBarControlsAbove .progressRow {
+	order: 2;
+}
+
+/* Recording bar sits under the controls when the bar is at the bottom, and
+   above the controls when the bar is at the top — expanding the controls
+   band without changing the main window size. */
+.recordingBar {
+	order: 10;
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 12px;
+	flex-wrap: wrap;
+	padding: 10px 12px;
+	border-radius: 14px;
+	background: rgba(10, 16, 32, 0.55);
+	border: 1px solid rgba(255, 255, 255, 0.12);
+}
+
+.bottomBarControlsAbove .recordingBar {
+	order: 0;
+}
+
+.bottomBarWithRecording {
+	gap: 10px;
+}
+
+.recordingBarInfo {
+	display: flex;
+	align-items: center;
+	gap: 10px;
+	min-width: 0;
+}
+
+.recordingBarDot,
+.recordingBarDotActive {
+	width: 10px;
+	height: 10px;
+	border-radius: 999px;
+	flex: 0 0 auto;
+	background: rgba(255, 255, 255, 0.35);
+}
+
+.recordingBarDotActive {
+	background: #ff4d4f;
+	box-shadow: 0 0 0 4px rgba(255, 77, 79, 0.18);
+}
+
+.recordingBarText {
+	display: grid;
+	gap: 2px;
+	min-width: 0;
+}
+
+.recordingBarTitle {
+	font-weight: 700;
+	color: var(--text-primary);
+	font-size: 0.92rem;
+}
+
+.recordingBarStatus {
+	color: var(--text-secondary);
+	font-size: 0.82rem;
+	font-variant-numeric: tabular-nums;
+}
+
+.recordingBarActions {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+}
+
+.recordingBarStartButton,
+.recordingBarStopButton,
+.recordingBarCloseButton {
+	border: 1px solid var(--button-border);
+	border-radius: 12px;
+	cursor: pointer;
+	transition: transform 160ms ease, background 160ms ease, border-color 160ms ease;
+	color: var(--text-primary);
+}
+
+.recordingBarStartButton,
+.recordingBarStopButton {
+	padding: 8px 14px;
+	font-weight: 700;
+	background: var(--button-bg);
+}
+
+.recordingBarStartButton:hover,
+.recordingBarStopButton:hover,
+.recordingBarCloseButton:hover {
+	transform: translateY(-1px);
+	background: var(--button-bg-hover);
+}
+
+.recordingBarStartButton {
+	background: rgba(255, 77, 79, 0.16);
+	border-color: rgba(255, 77, 79, 0.4);
+}
+
+.recordingBarStopButton {
+	background: rgba(79, 140, 255, 0.16);
+	border-color: rgba(79, 140, 255, 0.4);
+}
+
+.recordingBarCloseButton {
+	width: 34px;
+	height: 34px;
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	font-size: 1.25rem;
+	line-height: 1;
+	background: var(--button-bg);
+}
+
+.recordingBarStartButton:disabled,
+.recordingBarStopButton:disabled,
+.recordingBarCloseButton:disabled {
+	opacity: 0.5;
+	cursor: not-allowed;
+	transform: none;
+}
+
+html[data-theme='light'] .recordingBar {
+	background: rgba(255, 255, 255, 0.62);
+	border-color: rgba(33, 55, 92, 0.12);
+}
+
+.controlsFileInfo {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: 10px;
+	margin-bottom: 10px;
+	color: var(--muted-text);
+}
+
+.controlsFileName {
+	font-weight: 700;
+	color: var(--text-primary);
+}
+
+.controlsTrackPosition {
+	padding: 3px 9px;
+	border-radius: 999px;
+	background: var(--surface);
+	color: var(--text-secondary);
+	font-size: 0.82rem;
+}
+
+.controlsFileError {
+	color: #ff8f8f;
+	font-size: 0.88rem;
+}
+
+.bottomBar[data-variant='solid'] .progressBar {
+	accent-color: #4f8cff;
+}
+
+.bottomBar[data-variant='solid'] .iconButton,
+.bottomBar[data-variant='solid'] .iconButtonPrimary,
+.bottomBar[data-variant='solid'] .iconButtonActive {
+	background: var(--surface-soft);
+	border-color: var(--surface-border);
+}
+
+.bottomBar[data-variant='solid'] .iconButtonPrimary,
+.bottomBar[data-variant='solid'] .iconButtonActive {
+	background: linear-gradient(135deg, rgba(14, 165, 122, 0.16), rgba(79, 140, 255, 0.18));
+}
+
+.bottomBar[data-variant='minimal'] .progressRow {
+	max-width: 100%;
+	gap: 10px;
+}
+
+.bottomBar[data-variant='minimal'] .iconButton,
+.bottomBar[data-variant='minimal'] .iconButtonPrimary,
+.bottomBar[data-variant='minimal'] .iconButtonActive {
+	background: transparent;
+	border-color: transparent;
+	box-shadow: none;
+	width: 44px;
+	height: 44px;
+}
+
+.bottomBar[data-variant='minimal'] .iconButtonPrimary,
+.bottomBar[data-variant='minimal'] .iconButtonActive {
+	background: var(--surface-soft);
+	border-color: var(--surface-border-strong);
+}
+
+.controlsRow {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	justify-content: center;
+	gap: 12px;
+}
+
+.progressRow {
+	display: grid;
+	grid-template-columns: auto minmax(0, 1fr) auto;
+	gap: 12px;
+	align-items: center;
+	max-width: 760px;
+	width: 100%;
+	margin: 0 auto;
+}
+
+.progressBar {
+	width: 100%;
+	accent-color: var(--accent);
+	height: 6px;
+	cursor: pointer;
+}
+
+.progressBar:disabled {
+	opacity: 0.5;
+	cursor: not-allowed;
+}
+
+.timeLabel {
+	font-size: 0.85rem;
+	color: var(--text-secondary);
+	font-variant-numeric: tabular-nums;
+	white-space: nowrap;
+}
+
+.transportGroup,
+.toggleGroup {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 10px;
+	justify-content: center;
+}
+
+.volumeRow {
+	display: grid;
+	grid-template-columns: auto minmax(180px, 1fr) auto;
+	gap: 12px;
+	align-items: center;
+	width: min(100%, 520px);
+	margin: 0 auto;
+	padding: 10px 12px;
+	border-radius: 16px;
+	background: var(--surface-soft);
+	border: 1px solid var(--surface-border);
+}
+
+.volumeLabel,
+.volumeValue {
+	font-size: 0.85rem;
+	color: var(--text-secondary);
+	font-variant-numeric: tabular-nums;
+	white-space: nowrap;
+}
+
+.volumeSlider {
+	width: 100%;
+	accent-color: var(--accent);
+	height: 6px;
+	cursor: pointer;
+}
+
+.volumeSlider:disabled {
+	opacity: 0.5;
+	cursor: not-allowed;
+}
+
+.volumeRowBoosted {
+	border-color: #f59e0b;
+	background: rgba(245, 158, 11, 0.12);
+	box-shadow: 0 0 0 1px rgba(245, 158, 11, 0.35);
+}
+
+.volumeSliderBoosted {
+	accent-color: #f59e0b;
+}
+
+.volumeValueBoosted {
+	color: #f59e0b;
+	font-weight: 700;
+}
+
+.volumeMenuWrap {
+	position: relative;
+	display: inline-flex;
+}
+
+.volumeMenu {
+	position: absolute;
+	bottom: calc(100% + 8px);
+	inset-inline-start: 0;
+	min-width: 220px;
+	padding: 12px 14px;
+	border-radius: 14px;
+	background: var(--surface-strong);
+	border: 1px solid var(--surface-border-strong);
+	box-shadow: 0 18px 40px var(--surface-shadow);
+	z-index: 30;
+	display: grid;
+	gap: 10px;
+}
+
+.volumeMenuBoosted {
+	border-color: #f59e0b;
+	box-shadow: 0 18px 40px var(--surface-shadow), 0 0 0 1px rgba(245, 158, 11, 0.35);
+}
+
+.volumeMenuLabel {
+	font-size: 0.85rem;
+	color: var(--text-secondary);
+}
+
+.volumeMenuSlider {
+	flex: 1;
+	min-width: 0;
+	accent-color: var(--accent);
+	height: 6px;
+	cursor: pointer;
+}
+
+.volumeMenuSliderBoosted {
+	accent-color: #f59e0b;
+}
+
+.volumeMenuRow {
+	display: flex;
+	align-items: center;
+	gap: 10px;
+}
+
+.volumeMuteIconButton {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	flex: 0 0 auto;
+	width: 32px;
+	height: 32px;
+	border: 1px solid var(--button-border);
+	border-radius: 10px;
+	background: var(--button-bg);
+	color: var(--text-primary);
+	cursor: pointer;
+	transition: background 160ms ease, border-color 160ms ease;
+}
+
+.volumeMuteIconButton svg {
+	width: 18px;
+	height: 18px;
+}
+
+.volumeMuteIconButton:hover {
+	background: var(--button-bg-hover);
+}
+
+.volumeMuteIconButtonActive {
+	background: var(--button-active-bg);
+	border-color: var(--button-active-border);
+}
+
+.volumeMenuValue {
+	flex: 0 0 auto;
+	font-size: 0.9rem;
+	color: var(--text-secondary);
+	font-variant-numeric: tabular-nums;
+	text-align: end;
+	min-width: 3.5ch;
+}
+
+.volumeMenuValueBoosted {
+	color: #f59e0b;
+	font-weight: 700;
+}
+
+.speedMenuWrap {
+	position: relative;
+	display: inline-flex;
+}
+
+.speedButtonValue {
+	font-size: 0.95rem;
+	font-weight: 700;
+	font-variant-numeric: tabular-nums;
+	line-height: 1;
+}
+
+.speedMenu {
+	position: absolute;
+	bottom: calc(100% + 8px);
+	inset-inline-start: 0;
+	min-width: 84px;
+	padding: 6px;
+	border-radius: 14px;
+	background: var(--surface-strong);
+	border: 1px solid var(--surface-border-strong);
+	box-shadow: 0 18px 40px var(--surface-shadow);
+	z-index: 30;
+	display: grid;
+	gap: 4px;
+}
+
+.speedMenuItem,
+.speedMenuItemActive {
+	display: block;
+	width: 100%;
+	border: 1px solid transparent;
+	border-radius: 10px;
+	padding: 8px 12px;
+	font-size: 0.85rem;
+	font-variant-numeric: tabular-nums;
+	text-align: center;
+	cursor: pointer;
+	background: transparent;
+	color: var(--text-primary);
+	transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+}
+
+.speedMenuItem:hover {
+	background: var(--button-bg-hover);
+}
+
+.speedMenuItemActive {
+	background: var(--accent);
+	border-color: var(--accent);
+	color: #fff;
+	font-weight: 600;
+}
+
+.iconButton,
+.iconButtonPrimary,
+.iconButtonActive {
+	border: 1px solid var(--button-border);
+	border-radius: 14px;
+	width: 48px;
+	height: 48px;
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	background: var(--button-bg);
+	color: var(--text-primary);
+	cursor: pointer;
+	padding: 0;
+	transition: transform 160ms ease, background 160ms ease, border-color 160ms ease;
+}
+
+.iconButton svg,
+.iconButtonPrimary svg,
+.iconButtonActive svg {
+	width: 22px;
+	height: 22px;
+}
+
+.iconButton svg path,
+.iconButtonPrimary svg path,
+.iconButtonActive svg path {
+	vector-effect: non-scaling-stroke;
+}
+
+.iconButton:hover,
+.iconButtonPrimary:hover,
+.iconButtonActive:hover {
+	transform: translateY(-1px);
+	background: var(--button-bg-hover);
+}
+
+.bottomBar[data-variant='minimal'] .iconButton:hover,
+.bottomBar[data-variant='minimal'] .iconButtonPrimary:hover,
+.bottomBar[data-variant='minimal'] .iconButtonActive:hover {
+	background: var(--surface-soft);
+}
+
+.iconButton:disabled,
+.iconButtonPrimary:disabled {
+	opacity: 0.5;
+	cursor: not-allowed;
+	transform: none;
+}
+
+.iconButtonPrimary {
+	width: 54px;
+	height: 54px;
+	background: var(--button-active-bg);
+	border-color: var(--button-active-border);
+}
+
+.iconButtonActive {
+	background: var(--button-active-bg);
+	border-color: var(--button-active-border);
+}
+
+@media (max-width: 860px) {
+	.bottomBar {
+		justify-content: center;
+	}
+
+	.progressRow {
+		grid-template-columns: 1fr;
+	}
+
+	.timeLabel {
+		order: 2;
+	}
+
+	.progressBar {
+		order: 1;
+	}
+
+	.controlsRow {
+		justify-content: flex-start;
+	}
+}
