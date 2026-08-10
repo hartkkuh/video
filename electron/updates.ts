@@ -48,23 +48,26 @@ export function getCurrentAppVersion(): string {
 export async function checkForAppUpdates(): Promise<UpdateCheckResult> {
   const currentVersion = getCurrentAppVersion()
   const errors: string[] = []
+  const candidates: UpdateManifest[] = []
 
   try {
     const releaseManifest = await tryGitHubReleaseManifest(currentVersion)
     if (releaseManifest) {
-      return toCheckResult(currentVersion, releaseManifest)
+      candidates.push(releaseManifest)
     }
   } catch (error) {
     errors.push(`releases: ${formatNetworkError(error)}`)
   }
 
   try {
-    const fileManifest = await tryRepoVersionManifest(currentVersion)
-    if (fileManifest) {
-      return toCheckResult(currentVersion, fileManifest)
-    }
+    candidates.push(...(await collectRepoVersionManifests(currentVersion)))
   } catch (error) {
     errors.push(`repo: ${formatNetworkError(error)}`)
+  }
+
+  const latestManifest = pickNewestManifest(candidates)
+  if (latestManifest) {
+    return toCheckResult(currentVersion, latestManifest)
   }
 
   return {
@@ -84,6 +87,26 @@ export async function openUpdateDownload(url: string): Promise<boolean> {
 
   await shell.openExternal(url)
   return true
+}
+
+function pickNewestManifest(manifests: UpdateManifest[]): UpdateManifest | null {
+  let newest: UpdateManifest | null = null
+
+  for (const manifest of manifests) {
+    const version = normalizeVersionTag(manifest.version)
+    if (!version) {
+      continue
+    }
+
+    if (!newest || compareVersions(version, newest.version) > 0) {
+      newest = {
+        ...manifest,
+        version,
+      }
+    }
+  }
+
+  return newest
 }
 
 function toCheckResult(currentVersion: string, manifest: UpdateManifest): UpdateCheckResult {
@@ -123,7 +146,6 @@ async function tryGitHubReleaseManifest(currentVersion: string): Promise<UpdateM
     return manifestFromGitHubRelease(JSON.parse(latestResponse.body) as GitHubRelease)
   }
 
-  // Private repos and missing releases both return 404 — try the list endpoint too.
   if (latestResponse.status !== 404) {
     throw new Error(`GitHub latest release HTTP ${latestResponse.status}`)
   }
@@ -152,8 +174,9 @@ async function tryGitHubReleaseManifest(currentVersion: string): Promise<UpdateM
   return release ? manifestFromGitHubRelease(release) : null
 }
 
-async function tryRepoVersionManifest(currentVersion: string): Promise<UpdateManifest | null> {
+async function collectRepoVersionManifests(currentVersion: string): Promise<UpdateManifest[]> {
   const releaseUrl = `https://github.com/${UPDATE_REPO.owner}/${UPDATE_REPO.name}/releases/latest`
+  const manifests: UpdateManifest[] = []
   const errors: string[] = []
 
   for (const branch of DEFAULT_BRANCHES) {
@@ -162,49 +185,44 @@ async function tryRepoVersionManifest(currentVersion: string): Promise<UpdateMan
       const response = await requestText(updateJsonUrl, {
         'User-Agent': `FMP-Video-Player/${currentVersion}`,
         Accept: 'application/json',
+        'Cache-Control': 'no-cache',
       })
 
       if (response.status === 404) {
-        continue
-      }
-
-      if (response.status < 200 || response.status >= 300) {
+        // continue
+      } else if (response.status < 200 || response.status >= 300) {
         errors.push(`update.json@${branch}: HTTP ${response.status}`)
-        continue
-      }
+      } else {
+        const parsed = JSON.parse(response.body) as {
+          version?: unknown
+          downloadUrl?: unknown
+          releaseNotes?: unknown
+        }
+        const version = normalizeVersionTag(String(parsed.version ?? ''))
+        if (version) {
+          const downloadUrl =
+            typeof parsed.downloadUrl === 'string' && parsed.downloadUrl
+              ? parsed.downloadUrl
+              : releaseUrl
 
-      const parsed = JSON.parse(response.body) as {
-        version?: unknown
-        downloadUrl?: unknown
-        releaseNotes?: unknown
-      }
-      const version = normalizeVersionTag(String(parsed.version ?? ''))
-      if (!version) {
-        continue
-      }
-
-      const downloadUrl =
-        typeof parsed.downloadUrl === 'string' && parsed.downloadUrl
-          ? parsed.downloadUrl
-          : releaseUrl
-
-      return {
-        version,
-        downloadUrl,
-        releaseUrl: downloadUrl.includes('github.com') ? downloadUrl : releaseUrl,
-        releaseNotes: typeof parsed.releaseNotes === 'string' ? parsed.releaseNotes : '',
+          manifests.push({
+            version,
+            downloadUrl,
+            releaseUrl: downloadUrl.includes('github.com') ? downloadUrl : releaseUrl,
+            releaseNotes: typeof parsed.releaseNotes === 'string' ? parsed.releaseNotes : '',
+          })
+        }
       }
     } catch (error) {
       errors.push(`update.json@${branch}: ${formatNetworkError(error)}`)
     }
-  }
 
-  for (const branch of DEFAULT_BRANCHES) {
     const packageUrl = `https://raw.githubusercontent.com/${UPDATE_REPO.owner}/${UPDATE_REPO.name}/${branch}/package.json`
     try {
       const response = await requestText(packageUrl, {
         'User-Agent': `FMP-Video-Player/${currentVersion}`,
         Accept: 'application/json',
+        'Cache-Control': 'no-cache',
       })
 
       if (response.status === 404) {
@@ -222,22 +240,22 @@ async function tryRepoVersionManifest(currentVersion: string): Promise<UpdateMan
         continue
       }
 
-      return {
+      manifests.push({
         version,
         downloadUrl: releaseUrl,
         releaseUrl,
         releaseNotes: '',
-      }
+      })
     } catch (error) {
       errors.push(`package.json@${branch}: ${formatNetworkError(error)}`)
     }
   }
 
-  if (errors.length > 0) {
+  if (manifests.length === 0 && errors.length > 0) {
     throw new Error(errors.join(' | '))
   }
 
-  return null
+  return manifests
 }
 
 function manifestFromGitHubRelease(release: GitHubRelease): UpdateManifest | null {
@@ -264,6 +282,7 @@ function githubHeaders(currentVersion: string): Record<string, string> {
     Accept: 'application/vnd.github+json',
     'User-Agent': `FMP-Video-Player/${currentVersion}`,
     'X-GitHub-Api-Version': '2022-11-28',
+    'Cache-Control': 'no-cache',
   }
 }
 
