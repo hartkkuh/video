@@ -2,6 +2,7 @@ import fsPromises from 'node:fs/promises'
 import { createRequire } from 'node:module'
 import path from 'node:path'
 import { app, BrowserWindow, screen } from 'electron'
+import { resolveLibvlcDir } from './libvlc-path.js'
 
 const require = createRequire(import.meta.url)
 const koffi = require('koffi')
@@ -220,7 +221,7 @@ export class VlcPlayerService {
 	private filesMenuOverlayWindow: BrowserWindow | null = null
 
 	constructor() {
-		const libvlcDir = path.join(app.getAppPath(), 'libvlc')
+		const libvlcDir = resolveLibvlcDir()
 		process.env.VLC_PLUGIN_PATH = path.join(libvlcDir, 'plugins')
 		process.env.PATH = `${libvlcDir}${path.delimiter}${process.env.PATH ?? ''}`
 

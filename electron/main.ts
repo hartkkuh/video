@@ -94,17 +94,6 @@ function restoreControlsOverlayAfterFileDialog(hadVisibleControls: boolean) {
   mainWindow.webContents.send('vlc:parent-geometry-changed')
 }
 
-function isAppOwnedWindow(window: BrowserWindow | null | undefined): window is BrowserWindow {
-  // Any BrowserWindow from this process counts — including short-lived media
-  // probe hosts used by Effects/Media tabs. Treating those as "left the app"
-  // used to suspend/resume the native video layer and wipe the controls bar.
-  return Boolean(
-    window &&
-      !window.isDestroyed() &&
-      BrowserWindow.getAllWindows().some((candidate) => candidate === window),
-  )
-}
-
 function tuckFloatingOverlays() {
   if (controlsWindow && !controlsWindow.isDestroyed()) {
     // Drop out of the topmost band before hide — otherwise an always-on-top
@@ -444,10 +433,10 @@ function registerMediaProbeHandlers() {
 function resolveAppIcon() {
   const iconCandidates =
     process.platform === 'win32'
-      ? ['public/icon.ico', 'public/logo.png', 'dist/logo.png']
-      : ['public/logo.png', 'public/icon.ico', 'dist/logo.png']
+      ? ['public/icon.ico', 'dist/icon.ico', 'public/logo.png', 'dist/logo.png', 'icon.ico', 'logo.png']
+      : ['public/logo.png', 'dist/logo.png', 'public/icon.ico', 'dist/icon.ico', 'logo.png', 'icon.ico']
 
-  const roots = [app.getAppPath(), path.join(__dirname, '..')]
+  const roots = [app.getAppPath(), path.join(__dirname, '..'), process.resourcesPath]
 
   for (const root of roots) {
     for (const relativePath of iconCandidates) {

@@ -1,0 +1,44 @@
+appId: com.fmp.videoplayer
+productName: FMP Video Player
+copyright: Copyright © FMP
+electronDist: node_modules/electron/dist
+directories:
+  output: release
+  buildResources: build
+files:
+  - dist/**/*
+  - dist-electron/**/*
+  - package.json
+extraResources:
+  - from: libvlc
+    to: libvlc
+    filter:
+      - '**/*'
+      - '!list.md'
+asar: true
+asarUnpack:
+  - '**/node_modules/koffi/**/*'
+win:
+  icon: build/icon.ico
+  target:
+    - target: nsis
+      arch:
+        - x64
+  artifactName: ${productName}-Setup-${version}.${ext}
+nsis:
+  oneClick: false
+  allowToChangeInstallationDirectory: true
+  allowElevation: true
+  createDesktopShortcut: true
+  createStartMenuShortcut: true
+  shortcutName: FMP Video Player
+  installerIcon: build/icon.ico
+  uninstallerIcon: build/icon.ico
+  installerHeaderIcon: build/icon.ico
+  multiLanguageInstaller: true
+  displayLanguageSelector: false
+  installerLanguages:
+    - en_US
+    - he_IL
+  runAfterFinish: true
+  deleteAppDataOnUninstall: false

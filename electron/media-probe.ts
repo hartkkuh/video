@@ -2,6 +2,7 @@ import fsPromises from 'node:fs/promises'
 import { createRequire } from 'node:module'
 import path from 'node:path'
 import { app, BrowserWindow, nativeImage } from 'electron'
+import { resolveLibvlcDir } from './libvlc-path.js'
 import { hwndFromBuffer } from './win32-api.js'
 import { readArtworkFromMetaUrl, readEmbeddedAudioArtwork } from './media-artwork.js'
 import type {
@@ -167,7 +168,7 @@ export class MediaProbeService {
   ) => number
 
   constructor() {
-    const libvlcDir = path.join(app.getAppPath(), 'libvlc')
+    const libvlcDir = resolveLibvlcDir()
     process.env.VLC_PLUGIN_PATH = path.join(libvlcDir, 'plugins')
     process.env.PATH = `${libvlcDir}${path.delimiter}${process.env.PATH ?? ''}`
 
