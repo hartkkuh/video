@@ -170,6 +170,60 @@
 	color: var(--text-secondary);
 }
 
+.updatePanel {
+	display: grid;
+	gap: 10px;
+}
+
+.updateVersion {
+	margin: 0;
+	font-weight: 700;
+}
+
+.updateStatus {
+	margin: 0;
+	color: var(--text-secondary);
+	line-height: 1.45;
+}
+
+.updateActions {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 8px;
+}
+
+.updateButton,
+.updateButtonPrimary {
+	border-radius: 14px;
+	padding: 10px 16px;
+	cursor: pointer;
+	font-weight: 700;
+	transition: transform 160ms ease, background 160ms ease;
+}
+
+.updateButton {
+	border: 1px solid var(--button-border);
+	background: var(--button-bg);
+	color: var(--text-primary);
+}
+
+.updateButtonPrimary {
+	border: 1px solid var(--accent-border);
+	background: var(--accent-soft);
+	color: var(--text-primary);
+}
+
+.updateButton:hover:not(:disabled),
+.updateButtonPrimary:hover {
+	transform: translateY(-1px);
+	background: var(--button-bg-hover);
+}
+
+.updateButton:disabled {
+	opacity: 0.65;
+	cursor: default;
+}
+
 .backRow {
 	display: flex;
 	justify-content: flex-start;

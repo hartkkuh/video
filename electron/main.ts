@@ -1,4 +1,5 @@
 import { app, BrowserWindow, dialog, ipcMain, Menu, nativeImage, screen } from 'electron'
+import { checkForAppUpdates, getCurrentAppVersion, openUpdateDownload } from './updates.js'
 import fs from 'node:fs'
 import fsPromises from 'node:fs/promises'
 import path from 'node:path'
@@ -661,6 +662,18 @@ function watchRenderer() {
     }
   })
 }
+
+ipcMain.handle('updates:get-version', () => getCurrentAppVersion())
+
+ipcMain.handle('updates:check', async () => checkForAppUpdates())
+
+ipcMain.handle('updates:open-download', async (_event, url: unknown) => {
+  if (typeof url !== 'string') {
+    return false
+  }
+
+  return openUpdateDownload(url)
+})
 
 ipcMain.handle('settings:get', async () => (await readStore()).settings)
 

@@ -82,6 +82,19 @@
     "controlsPositionTopDescription": "בראש הווידאו — כפתורי הנגינה מעל סרגל ההתקדמות.",
     "back": "חזרה לנגן"
   },
+  "updates": {
+    "sectionTitle": "עדכונים",
+    "currentVersion": "גרסה נוכחית: {{version}}",
+    "checkButton": "בדוק עדכונים",
+    "checking": "בודק עדכונים…",
+    "checkHint": "אפשר לבדוק ידנית בכל רגע. האפליקציה גם בודקת בשקט בכל פתיחה.",
+    "upToDate": "הגרסה העדכנית ביותר מותקנת ({{version}}).",
+    "availableTitle": "גרסה חדשה זמינה: {{version}}",
+    "availableMessage": "מותקן אצלך {{current}}. זמינה גרסה {{latest}}.",
+    "checkFailed": "לא ניתן לבדוק עדכונים: {{message}}",
+    "download": "הורד עדכון",
+    "dismiss": "סגור"
+  },
   "effects": {
     "kicker": "אפקטים",
     "title": "אפקטים",

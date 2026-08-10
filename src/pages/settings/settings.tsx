@@ -1,9 +1,10 @@
-import { useState, type ReactNode } from 'react'
+import { useEffect, useState, type ReactNode } from 'react'
 import { useAppTranslation } from '../../i18n/useAppTranslation'
 import { Link } from 'react-router-dom'
 import LanguagePicker from '../../components/language'
 import { useAppSettings } from '../../settings/settings-context'
 import type { ControlsPosition } from '../../settings/settings'
+import type { UpdateCheckResult } from '../../../shared/updates'
 import styles from './settings.module.css'
 
 const CONTROLS_POSITION_OPTIONS: ControlsPosition[] = ['bottom', 'top']
@@ -40,6 +41,45 @@ function SettingSection({
 export default function SettingsPage() {
   const { t } = useAppTranslation()
   const { settings, setTheme, setControlsPosition } = useAppSettings()
+  const [appVersion, setAppVersion] = useState<string>('')
+  const [updateChecking, setUpdateChecking] = useState(false)
+  const [updateResult, setUpdateResult] = useState<UpdateCheckResult | null>(null)
+
+  useEffect(() => {
+    let cancelled = false
+
+    async function loadVersion() {
+      const version = await window.electronAPI?.getAppVersion?.()
+      if (!cancelled && version) {
+        setAppVersion(version)
+      }
+    }
+
+    void loadVersion()
+    return () => {
+      cancelled = true
+    }
+  }, [])
+
+  async function handleCheckForUpdates() {
+    if (!window.electronAPI?.checkForUpdates || updateChecking) {
+      return
+    }
+
+    setUpdateChecking(true)
+    try {
+      const result = await window.electronAPI.checkForUpdates()
+      setUpdateResult(result)
+    } catch (error) {
+      setUpdateResult({
+        status: 'error',
+        currentVersion: appVersion || '0.0.0',
+        message: error instanceof Error ? error.message : 'Unknown error',
+      })
+    } finally {
+      setUpdateChecking(false)
+    }
+  }
 
   const controlsPositionLabels: Record<
     ControlsPosition,
@@ -53,6 +93,20 @@ export default function SettingsPage() {
       title: t('settings.controlsPositionTop'),
       description: t('settings.controlsPositionTopDescription'),
     },
+  }
+
+  let updateStatusText = t('updates.checkHint')
+  if (updateChecking) {
+    updateStatusText = t('updates.checking')
+  } else if (updateResult?.status === 'up-to-date') {
+    updateStatusText = t('updates.upToDate', { version: updateResult.currentVersion })
+  } else if (updateResult?.status === 'available') {
+    updateStatusText = t('updates.availableMessage', {
+      current: updateResult.currentVersion,
+      latest: updateResult.latestVersion,
+    })
+  } else if (updateResult?.status === 'error') {
+    updateStatusText = t('updates.checkFailed', { message: updateResult.message })
   }
 
   return (
@@ -121,6 +175,38 @@ export default function SettingsPage() {
                   </p>
                 </button>
               ))}
+            </div>
+          </SettingSection>
+
+          <SettingSection title={t('updates.sectionTitle')} defaultExpanded>
+            <div className={styles.updatePanel}>
+              <p className={styles.updateVersion}>
+                {t('updates.currentVersion', { version: appVersion || '—' })}
+              </p>
+              <p className={styles.updateStatus}>{updateStatusText}</p>
+              <div className={styles.updateActions}>
+                <button
+                  type="button"
+                  className={styles.updateButton}
+                  onClick={() => {
+                    void handleCheckForUpdates()
+                  }}
+                  disabled={updateChecking}
+                >
+                  {updateChecking ? t('updates.checking') : t('updates.checkButton')}
+                </button>
+                {updateResult?.status === 'available' ? (
+                  <button
+                    type="button"
+                    className={styles.updateButtonPrimary}
+                    onClick={() => {
+                      void window.electronAPI?.openUpdateDownload?.(updateResult.downloadUrl)
+                    }}
+                  >
+                    {t('updates.download')}
+                  </button>
+                ) : null}
+              </div>
             </div>
           </SettingSection>
         </div>

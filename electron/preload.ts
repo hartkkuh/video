@@ -8,10 +8,15 @@ import type {
   MediaThumbnailOptions,
   MediaTrackInfo,
 } from '../shared/media-probe.js'
+import type { UpdateCheckResult } from '../shared/updates.js'
 
 contextBridge.exposeInMainWorld('electronAPI', {
   platform: process.platform,
   getPathForFile: (file: File) => webUtils.getPathForFile(file),
+  getAppVersion: () => ipcRenderer.invoke('updates:get-version') as Promise<string>,
+  checkForUpdates: () => ipcRenderer.invoke('updates:check') as Promise<UpdateCheckResult>,
+  openUpdateDownload: (url: string) =>
+    ipcRenderer.invoke('updates:open-download', url) as Promise<boolean>,
   getSettings: () => ipcRenderer.invoke('settings:get') as Promise<AppSettings>,
   saveSettings: (settings: AppSettings) =>
     ipcRenderer.invoke('settings:save', settings) as Promise<AppSettings>,

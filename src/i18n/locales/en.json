@@ -82,6 +82,19 @@
     "controlsPositionTopDescription": "At the top of the video — playback buttons above the progress bar.",
     "back": "Back to player"
   },
+  "updates": {
+    "sectionTitle": "Updates",
+    "currentVersion": "Current version: {{version}}",
+    "checkButton": "Check for updates",
+    "checking": "Checking for updates…",
+    "checkHint": "You can check manually anytime. The app also checks quietly on every launch.",
+    "upToDate": "You are on the latest version ({{version}}).",
+    "availableTitle": "New version available: {{version}}",
+    "availableMessage": "You have {{current}}. Version {{latest}} is available.",
+    "checkFailed": "Could not check for updates: {{message}}",
+    "download": "Download update",
+    "dismiss": "Dismiss"
+  },
   "effects": {
     "kicker": "Effects",
     "title": "Effects",

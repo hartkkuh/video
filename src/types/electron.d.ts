@@ -12,6 +12,7 @@ import type {
   MediaThumbnailOptions,
   MediaTrackInfo,
 } from '../../shared/media-probe'
+import type { UpdateCheckResult } from '../../shared/updates'
 
 export type VlcPlayerState = {
   playing: boolean
@@ -84,6 +85,9 @@ declare global {
     electronAPI?: {
       platform: NodeJS.Platform
       getPathForFile: (file: File) => string
+      getAppVersion: () => Promise<string>
+      checkForUpdates: () => Promise<UpdateCheckResult>
+      openUpdateDownload: (url: string) => Promise<boolean>
       getSettings: () => Promise<AppSettings>
       saveSettings: (settings: AppSettings) => Promise<AppSettings>
       onSettingsChanged: (callback: (settings: AppSettings) => void) => () => void
