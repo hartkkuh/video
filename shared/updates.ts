@@ -18,6 +18,21 @@ export type UpdateCheckResult =
       message: string
     }
 
+export type UpdateDownloadProgress = {
+  receivedBytes: number
+  totalBytes: number
+  percent: number
+}
+
+export type UpdateInstallResult =
+  | {
+      ok: true
+    }
+  | {
+      ok: false
+      message: string
+    }
+
 /** Compare semver-ish versions. Returns 1 if a > b, -1 if a < b, 0 if equal. */
 export function compareVersions(a: string, b: string): number {
   const left = parseVersionParts(a)

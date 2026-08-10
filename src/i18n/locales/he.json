@@ -94,6 +94,10 @@
     "checkFailed": "לא ניתן לבדוק עדכונים: {{message}}",
     "sourceMissing": "לא נמצא מקור עדכונים ציבורי. יש ליצור GitHub Release או להפוך את המאגר לציבורי עם update.json.",
     "download": "הורד עדכון",
+    "installNow": "עדכן עכשיו",
+    "installingButton": "מעדכן…",
+    "installing": "מוריד ומתקין את העדכון… {{percent}}%",
+    "installFailed": "העדכון נכשל: {{message}}",
     "dismiss": "סגור"
   },
   "effects": {

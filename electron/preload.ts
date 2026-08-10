@@ -8,7 +8,11 @@ import type {
   MediaThumbnailOptions,
   MediaTrackInfo,
 } from '../shared/media-probe.js'
-import type { UpdateCheckResult } from '../shared/updates.js'
+import type {
+  UpdateCheckResult,
+  UpdateDownloadProgress,
+  UpdateInstallResult,
+} from '../shared/updates.js'
 
 contextBridge.exposeInMainWorld('electronAPI', {
   platform: process.platform,
@@ -17,6 +21,15 @@ contextBridge.exposeInMainWorld('electronAPI', {
   checkForUpdates: () => ipcRenderer.invoke('updates:check') as Promise<UpdateCheckResult>,
   openUpdateDownload: (url: string) =>
     ipcRenderer.invoke('updates:open-download', url) as Promise<boolean>,
+  installUpdate: (url: string) =>
+    ipcRenderer.invoke('updates:install', url) as Promise<UpdateInstallResult>,
+  onUpdateDownloadProgress: (callback: (progress: UpdateDownloadProgress) => void) => {
+    const listener = (_event: unknown, progress: UpdateDownloadProgress) => callback(progress)
+    ipcRenderer.on('updates:download-progress', listener)
+    return () => {
+      ipcRenderer.removeListener('updates:download-progress', listener)
+    }
+  },
   getLaunchFiles: () => ipcRenderer.invoke('app:get-launch-files') as Promise<string[]>,
   onOpenFiles: (callback: (filePaths: string[]) => void) => {
     const listener = (_event: unknown, filePaths: string[]) => {

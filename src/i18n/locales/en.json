@@ -94,6 +94,10 @@
     "checkFailed": "Could not check for updates: {{message}}",
     "sourceMissing": "No public update source found. Create a GitHub Release or make the repo public with update.json.",
     "download": "Download update",
+    "installNow": "Update now",
+    "installingButton": "Updating…",
+    "installing": "Downloading and installing update… {{percent}}%",
+    "installFailed": "Update failed: {{message}}",
     "dismiss": "Dismiss"
   },
   "effects": {

@@ -12,7 +12,11 @@ import type {
   MediaThumbnailOptions,
   MediaTrackInfo,
 } from '../../shared/media-probe'
-import type { UpdateCheckResult } from '../../shared/updates'
+import type {
+  UpdateCheckResult,
+  UpdateDownloadProgress,
+  UpdateInstallResult,
+} from '../../shared/updates'
 
 export type VlcPlayerState = {
   playing: boolean
@@ -88,6 +92,10 @@ declare global {
       getAppVersion: () => Promise<string>
       checkForUpdates: () => Promise<UpdateCheckResult>
       openUpdateDownload: (url: string) => Promise<boolean>
+      installUpdate: (url: string) => Promise<UpdateInstallResult>
+      onUpdateDownloadProgress: (
+        callback: (progress: UpdateDownloadProgress) => void,
+      ) => () => void
       getLaunchFiles: () => Promise<string[]>
       onOpenFiles: (callback: (filePaths: string[]) => void) => () => void
       getSettings: () => Promise<AppSettings>

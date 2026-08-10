@@ -2,6 +2,7 @@ import { useEffect, useState, type ReactNode } from 'react'
 import { useAppTranslation } from '../../i18n/useAppTranslation'
 import { Link } from 'react-router-dom'
 import LanguagePicker from '../../components/language'
+import { useInstallUpdate } from '../../hooks/use-install-update'
 import { useAppSettings } from '../../settings/settings-context'
 import type { ControlsPosition } from '../../settings/settings'
 import type { UpdateCheckResult } from '../../../shared/updates'
@@ -44,6 +45,7 @@ export default function SettingsPage() {
   const [appVersion, setAppVersion] = useState<string>('')
   const [updateChecking, setUpdateChecking] = useState(false)
   const [updateResult, setUpdateResult] = useState<UpdateCheckResult | null>(null)
+  const { installing, progressPercent, error: installError, installUpdate } = useInstallUpdate()
 
   useEffect(() => {
     let cancelled = false
@@ -96,7 +98,11 @@ export default function SettingsPage() {
   }
 
   let updateStatusText = t('updates.checkHint')
-  if (updateChecking) {
+  if (installing) {
+    updateStatusText = t('updates.installing', { percent: progressPercent })
+  } else if (installError) {
+    updateStatusText = t('updates.installFailed', { message: installError })
+  } else if (updateChecking) {
     updateStatusText = t('updates.checking')
   } else if (updateResult?.status === 'up-to-date') {
     updateStatusText = t('updates.upToDate', { version: updateResult.currentVersion })
@@ -191,7 +197,7 @@ export default function SettingsPage() {
                   onClick={() => {
                     void handleCheckForUpdates()
                   }}
-                  disabled={updateChecking}
+                  disabled={updateChecking || installing}
                 >
                   {updateChecking ? t('updates.checking') : t('updates.checkButton')}
                 </button>
@@ -199,11 +205,12 @@ export default function SettingsPage() {
                   <button
                     type="button"
                     className={styles.updateButtonPrimary}
+                    disabled={installing}
                     onClick={() => {
-                      void window.electronAPI?.openUpdateDownload?.(updateResult.downloadUrl)
+                      void installUpdate(updateResult.downloadUrl)
                     }}
                   >
-                    {t('updates.download')}
+                    {installing ? t('updates.installingButton') : t('updates.installNow')}
                   </button>
                 ) : null}
               </div>

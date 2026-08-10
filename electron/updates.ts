@@ -1,10 +1,16 @@
 import { app, net, shell } from 'electron'
+import { spawn } from 'node:child_process'
+import fs from 'node:fs'
+import fsPromises from 'node:fs/promises'
 import https from 'node:https'
+import path from 'node:path'
 import { URL } from 'node:url'
 import {
   compareVersions,
   normalizeVersionTag,
   type UpdateCheckResult,
+  type UpdateDownloadProgress,
+  type UpdateInstallResult,
 } from '../shared/updates.js'
 
 const UPDATE_REPO = {
@@ -13,7 +19,11 @@ const UPDATE_REPO = {
 } as const
 
 const CHECK_TIMEOUT_MS = 12_000
+const DOWNLOAD_TIMEOUT_MS = 10 * 60 * 1000
 const DEFAULT_BRANCHES = ['main', 'master'] as const
+const PRODUCT_NAME = 'FMP Video Player'
+
+let installInProgress = false
 
 type GitHubReleaseAsset = {
   browser_download_url?: string
@@ -87,6 +97,272 @@ export async function openUpdateDownload(url: string): Promise<boolean> {
 
   await shell.openExternal(url)
   return true
+}
+
+export async function downloadAndInstallUpdate(
+  downloadUrl: string,
+  onProgress?: (progress: UpdateDownloadProgress) => void,
+): Promise<UpdateInstallResult> {
+  if (installInProgress) {
+    return { ok: false, message: 'Update already in progress' }
+  }
+
+  if (typeof downloadUrl !== 'string' || !/^https?:\/\//i.test(downloadUrl)) {
+    return { ok: false, message: 'Invalid download URL' }
+  }
+
+  installInProgress = true
+
+  try {
+    const installerUrl = await resolveInstallerDownloadUrl(downloadUrl)
+    const destPath = path.join(
+      app.getPath('temp'),
+      `FMP-Video-Player-Setup-${getCurrentAppVersion()}-update.exe`,
+    )
+
+    await downloadBinaryFile(installerUrl, destPath, onProgress)
+
+    const perUserExe = path.join(
+      process.env.LOCALAPPDATA || '',
+      'Programs',
+      PRODUCT_NAME,
+      `${PRODUCT_NAME}.exe`,
+    )
+    const perMachineExe = path.join(
+      process.env['ProgramFiles'] || 'C:\\Program Files',
+      PRODUCT_NAME,
+      `${PRODUCT_NAME}.exe`,
+    )
+
+    const launcherPath = path.join(
+      app.getPath('temp'),
+      `fmp-update-launch-${Date.now()}.cmd`,
+    )
+    const launcherScript = [
+      '@echo off',
+      `start /wait "" "${destPath}" /S`,
+      `if exist "${perUserExe}" (`,
+      `  start "" "${perUserExe}"`,
+      `) else if exist "${perMachineExe}" (`,
+      `  start "" "${perMachineExe}"`,
+      `)`,
+      `del /f /q "${destPath}" >nul 2>&1`,
+      `del /f /q "%~f0" >nul 2>&1`,
+      '',
+    ].join('\r\n')
+
+    await fsPromises.writeFile(launcherPath, launcherScript, 'utf8')
+
+    const child = spawn('cmd.exe', ['/c', launcherPath], {
+      detached: true,
+      stdio: 'ignore',
+      windowsHide: true,
+    })
+    child.unref()
+
+    setTimeout(() => {
+      app.quit()
+    }, 500)
+
+    return { ok: true }
+  } catch (error) {
+    installInProgress = false
+    return {
+      ok: false,
+      message: formatNetworkError(error),
+    }
+  }
+}
+
+async function resolveInstallerDownloadUrl(downloadUrl: string): Promise<string> {
+  const normalized = downloadUrl.trim()
+  if (/\.exe($|\?)/i.test(normalized)) {
+    return normalized
+  }
+
+  // Release page / generic latest link → resolve the Setup .exe asset.
+  const release = await tryGitHubReleaseManifest(getCurrentAppVersion())
+  if (release?.downloadUrl && /\.exe($|\?)/i.test(release.downloadUrl)) {
+    return release.downloadUrl
+  }
+
+  throw new Error('Could not resolve installer download URL')
+}
+
+async function downloadBinaryFile(
+  url: string,
+  destPath: string,
+  onProgress?: (progress: UpdateDownloadProgress) => void,
+): Promise<void> {
+  const errors: string[] = []
+
+  try {
+    await downloadBinaryWithChromium(url, destPath, onProgress)
+    return
+  } catch (error) {
+    errors.push(`chromium: ${formatNetworkError(error)}`)
+  }
+
+  try {
+    await downloadBinaryWithNode(url, destPath, true, onProgress)
+    return
+  } catch (error) {
+    errors.push(`node: ${formatNetworkError(error)}`)
+  }
+
+  try {
+    await downloadBinaryWithNode(url, destPath, false, onProgress)
+  } catch (error) {
+    errors.push(`node-insecure: ${formatNetworkError(error)}`)
+    throw new Error(errors.join(' | '))
+  }
+}
+
+async function downloadBinaryWithChromium(
+  url: string,
+  destPath: string,
+  onProgress?: (progress: UpdateDownloadProgress) => void,
+): Promise<void> {
+  if (!app.isReady()) {
+    throw new Error('App is not ready')
+  }
+
+  const response = await net.fetch(url, {
+    method: 'GET',
+    redirect: 'follow',
+    headers: {
+      'User-Agent': `FMP-Video-Player/${getCurrentAppVersion()}`,
+      Accept: 'application/octet-stream,*/*',
+    },
+  })
+
+  if (!response.ok) {
+    throw new Error(`HTTP ${response.status}`)
+  }
+
+  const totalBytes = Number(response.headers.get('content-length') ?? 0)
+  const reader = response.body?.getReader()
+  if (!reader) {
+    const buffer = Buffer.from(await response.arrayBuffer())
+    await fsPromises.writeFile(destPath, buffer)
+    onProgress?.({
+      receivedBytes: buffer.length,
+      totalBytes: buffer.length,
+      percent: 100,
+    })
+    return
+  }
+
+  const chunks: Uint8Array[] = []
+  let receivedBytes = 0
+
+  while (true) {
+    const { done, value } = await reader.read()
+    if (done) {
+      break
+    }
+    if (!value) {
+      continue
+    }
+
+    chunks.push(value)
+    receivedBytes += value.byteLength
+    onProgress?.({
+      receivedBytes,
+      totalBytes,
+      percent: totalBytes > 0 ? Math.min(100, Math.round((receivedBytes / totalBytes) * 100)) : 0,
+    })
+  }
+
+  await fsPromises.writeFile(destPath, Buffer.concat(chunks))
+  if (totalBytes <= 0) {
+    onProgress?.({
+      receivedBytes,
+      totalBytes: receivedBytes,
+      percent: 100,
+    })
+  }
+}
+
+function downloadBinaryWithNode(
+  url: string,
+  destPath: string,
+  rejectUnauthorized: boolean,
+  onProgress?: (progress: UpdateDownloadProgress) => void,
+): Promise<void> {
+  return new Promise((resolve, reject) => {
+    const parsed = new URL(url)
+    const request = https.request(
+      {
+        protocol: parsed.protocol,
+        hostname: parsed.hostname,
+        port: parsed.port || 443,
+        path: `${parsed.pathname}${parsed.search}`,
+        method: 'GET',
+        headers: {
+          'User-Agent': `FMP-Video-Player/${getCurrentAppVersion()}`,
+          Accept: 'application/octet-stream,*/*',
+        },
+        rejectUnauthorized,
+        timeout: DOWNLOAD_TIMEOUT_MS,
+      },
+      (response) => {
+        const status = response.statusCode ?? 0
+        if (status >= 300 && status < 400 && response.headers.location) {
+          response.resume()
+          downloadBinaryWithNode(response.headers.location, destPath, rejectUnauthorized, onProgress)
+            .then(resolve)
+            .catch(reject)
+          return
+        }
+
+        if (status < 200 || status >= 300) {
+          response.resume()
+          reject(new Error(`HTTP ${status}`))
+          return
+        }
+
+        const totalBytes = Number(response.headers['content-length'] ?? 0)
+        let receivedBytes = 0
+        const file = fs.createWriteStream(destPath)
+
+        response.on('data', (chunk: Buffer) => {
+          receivedBytes += chunk.length
+          onProgress?.({
+            receivedBytes,
+            totalBytes,
+            percent:
+              totalBytes > 0 ? Math.min(100, Math.round((receivedBytes / totalBytes) * 100)) : 0,
+          })
+        })
+
+        response.pipe(file)
+
+        file.on('finish', () => {
+          file.close(() => {
+            if (totalBytes <= 0) {
+              onProgress?.({
+                receivedBytes,
+                totalBytes: receivedBytes,
+                percent: 100,
+              })
+            }
+            resolve()
+          })
+        })
+
+        file.on('error', (error) => {
+          fs.unlink(destPath, () => reject(error))
+        })
+      },
+    )
+
+    request.on('timeout', () => {
+      request.destroy(new Error('Download timed out'))
+    })
+    request.on('error', reject)
+    request.end()
+  })
 }
 
 function pickNewestManifest(manifests: UpdateManifest[]): UpdateManifest | null {

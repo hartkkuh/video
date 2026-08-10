@@ -1,6 +1,11 @@
 import { app, BrowserWindow, dialog, ipcMain, Menu, nativeImage, screen } from 'electron'
 import { collectLaunchMediaFiles } from './launch-files.js'
-import { checkForAppUpdates, getCurrentAppVersion, openUpdateDownload } from './updates.js'
+import {
+  checkForAppUpdates,
+  downloadAndInstallUpdate,
+  getCurrentAppVersion,
+  openUpdateDownload,
+} from './updates.js'
 import fs from 'node:fs'
 import fsPromises from 'node:fs/promises'
 import path from 'node:path'
@@ -693,6 +698,18 @@ ipcMain.handle('updates:open-download', async (_event, url: unknown) => {
   }
 
   return openUpdateDownload(url)
+})
+
+ipcMain.handle('updates:install', async (event, url: unknown) => {
+  if (typeof url !== 'string') {
+    return { ok: false, message: 'Invalid download URL' }
+  }
+
+  return downloadAndInstallUpdate(url, (progress) => {
+    if (!event.sender.isDestroyed()) {
+      event.sender.send('updates:download-progress', progress)
+    }
+  })
 })
 
 ipcMain.handle('app:get-launch-files', () => {
