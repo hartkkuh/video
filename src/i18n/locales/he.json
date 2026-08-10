@@ -92,6 +92,7 @@
     "availableTitle": "גרסה חדשה זמינה: {{version}}",
     "availableMessage": "מותקן אצלך {{current}}. זמינה גרסה {{latest}}.",
     "checkFailed": "לא ניתן לבדוק עדכונים: {{message}}",
+    "sourceMissing": "לא נמצא מקור עדכונים ציבורי. יש ליצור GitHub Release או להפוך את המאגר לציבורי עם update.json.",
     "download": "הורד עדכון",
     "dismiss": "סגור"
   },

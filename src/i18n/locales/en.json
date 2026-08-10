@@ -92,6 +92,7 @@
     "availableTitle": "New version available: {{version}}",
     "availableMessage": "You have {{current}}. Version {{latest}} is available.",
     "checkFailed": "Could not check for updates: {{message}}",
+    "sourceMissing": "No public update source found. Create a GitHub Release or make the repo public with update.json.",
     "download": "Download update",
     "dismiss": "Dismiss"
   },

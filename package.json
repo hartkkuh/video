@@ -1,7 +1,7 @@
 {
   "name": "fmp-video-player",
   "private": true,
-  "version": "0.1.4",
+  "version": "0.1.5",
   "description": "FMP Video Player",
   "author": "FMP",
   "type": "module",
@@ -12,8 +12,9 @@
     "start": "electron .",
     "lint": "oxlint",
     "icons": "node scripts/generate-icon.mjs",
-    "dist": "npm run icons && npm run build && node scripts/dist.mjs --win nsis",
-    "dist:dir": "npm run icons && npm run build && node scripts/dist.mjs --win dir"
+    "sync:update": "node scripts/sync-update-json.mjs",
+    "dist": "npm run sync:update && npm run icons && npm run build && node scripts/dist.mjs --win nsis",
+    "dist:dir": "npm run sync:update && npm run icons && npm run build && node scripts/dist.mjs --win dir"
   },
   "dependencies": {
     "i18next": "^26.3.2",

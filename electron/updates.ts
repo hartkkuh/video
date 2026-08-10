@@ -13,6 +13,7 @@ const UPDATE_REPO = {
 } as const
 
 const CHECK_TIMEOUT_MS = 12_000
+const DEFAULT_BRANCHES = ['main', 'master'] as const
 
 type GitHubReleaseAsset = {
   browser_download_url?: string
@@ -23,7 +24,16 @@ type GitHubRelease = {
   tag_name?: string
   html_url?: string
   body?: string
+  draft?: boolean
+  prerelease?: boolean
   assets?: GitHubReleaseAsset[]
+}
+
+type UpdateManifest = {
+  version: string
+  downloadUrl: string
+  releaseUrl: string
+  releaseNotes: string
 }
 
 type HttpJsonResponse = {
@@ -37,69 +47,33 @@ export function getCurrentAppVersion(): string {
 
 export async function checkForAppUpdates(): Promise<UpdateCheckResult> {
   const currentVersion = getCurrentAppVersion()
-  const releaseApiUrl = `https://api.github.com/repos/${UPDATE_REPO.owner}/${UPDATE_REPO.name}/releases/latest`
+  const errors: string[] = []
 
   try {
-    const response = await requestText(releaseApiUrl, {
-      Accept: 'application/vnd.github+json',
-      'User-Agent': `FMP-Video-Player/${currentVersion}`,
-      'X-GitHub-Api-Version': '2022-11-28',
-    })
-
-    if (response.status === 404) {
-      return {
-        status: 'up-to-date',
-        currentVersion,
-        latestVersion: currentVersion,
-      }
-    }
-
-    if (response.status < 200 || response.status >= 300) {
-      return {
-        status: 'error',
-        currentVersion,
-        message: `HTTP ${response.status}`,
-      }
-    }
-
-    const release = JSON.parse(response.body) as GitHubRelease
-    const latestVersion = normalizeVersionTag(String(release.tag_name ?? ''))
-
-    if (!latestVersion) {
-      return {
-        status: 'error',
-        currentVersion,
-        message: 'Invalid release tag',
-      }
-    }
-
-    const releaseUrl =
-      typeof release.html_url === 'string' && release.html_url
-        ? release.html_url
-        : `https://github.com/${UPDATE_REPO.owner}/${UPDATE_REPO.name}/releases/latest`
-
-    if (compareVersions(latestVersion, currentVersion) <= 0) {
-      return {
-        status: 'up-to-date',
-        currentVersion,
-        latestVersion,
-      }
-    }
-
-    return {
-      status: 'available',
-      currentVersion,
-      latestVersion,
-      releaseNotes: typeof release.body === 'string' ? release.body.trim() : '',
-      releaseUrl,
-      downloadUrl: pickDownloadUrl(release.assets, releaseUrl),
+    const releaseManifest = await tryGitHubReleaseManifest(currentVersion)
+    if (releaseManifest) {
+      return toCheckResult(currentVersion, releaseManifest)
     }
   } catch (error) {
-    return {
-      status: 'error',
-      currentVersion,
-      message: formatNetworkError(error),
+    errors.push(`releases: ${formatNetworkError(error)}`)
+  }
+
+  try {
+    const fileManifest = await tryRepoVersionManifest(currentVersion)
+    if (fileManifest) {
+      return toCheckResult(currentVersion, fileManifest)
     }
+  } catch (error) {
+    errors.push(`repo: ${formatNetworkError(error)}`)
+  }
+
+  return {
+    status: 'error',
+    currentVersion,
+    message:
+      errors.length > 0
+        ? errors.join(' | ')
+        : 'Update source not found (private repository or missing public Release/update.json)',
   }
 }
 
@@ -112,27 +86,205 @@ export async function openUpdateDownload(url: string): Promise<boolean> {
   return true
 }
 
+function toCheckResult(currentVersion: string, manifest: UpdateManifest): UpdateCheckResult {
+  const latestVersion = normalizeVersionTag(manifest.version)
+
+  if (!latestVersion) {
+    return {
+      status: 'error',
+      currentVersion,
+      message: 'Invalid release version',
+    }
+  }
+
+  if (compareVersions(latestVersion, currentVersion) <= 0) {
+    return {
+      status: 'up-to-date',
+      currentVersion,
+      latestVersion,
+    }
+  }
+
+  return {
+    status: 'available',
+    currentVersion,
+    latestVersion,
+    releaseNotes: manifest.releaseNotes,
+    releaseUrl: manifest.releaseUrl,
+    downloadUrl: manifest.downloadUrl,
+  }
+}
+
+async function tryGitHubReleaseManifest(currentVersion: string): Promise<UpdateManifest | null> {
+  const latestUrl = `https://api.github.com/repos/${UPDATE_REPO.owner}/${UPDATE_REPO.name}/releases/latest`
+  const latestResponse = await requestText(latestUrl, githubHeaders(currentVersion))
+
+  if (latestResponse.status === 200) {
+    return manifestFromGitHubRelease(JSON.parse(latestResponse.body) as GitHubRelease)
+  }
+
+  // Private repos and missing releases both return 404 — try the list endpoint too.
+  if (latestResponse.status !== 404) {
+    throw new Error(`GitHub latest release HTTP ${latestResponse.status}`)
+  }
+
+  const listUrl = `https://api.github.com/repos/${UPDATE_REPO.owner}/${UPDATE_REPO.name}/releases?per_page=10`
+  const listResponse = await requestText(listUrl, githubHeaders(currentVersion))
+
+  if (listResponse.status === 404) {
+    return null
+  }
+
+  if (listResponse.status < 200 || listResponse.status >= 300) {
+    throw new Error(`GitHub releases HTTP ${listResponse.status}`)
+  }
+
+  const releases = JSON.parse(listResponse.body) as GitHubRelease[]
+  if (!Array.isArray(releases) || releases.length === 0) {
+    return null
+  }
+
+  const release =
+    releases.find((item) => !item.draft && !item.prerelease) ??
+    releases.find((item) => !item.draft) ??
+    releases[0]
+
+  return release ? manifestFromGitHubRelease(release) : null
+}
+
+async function tryRepoVersionManifest(currentVersion: string): Promise<UpdateManifest | null> {
+  const releaseUrl = `https://github.com/${UPDATE_REPO.owner}/${UPDATE_REPO.name}/releases/latest`
+  const errors: string[] = []
+
+  for (const branch of DEFAULT_BRANCHES) {
+    const updateJsonUrl = `https://raw.githubusercontent.com/${UPDATE_REPO.owner}/${UPDATE_REPO.name}/${branch}/update.json`
+    try {
+      const response = await requestText(updateJsonUrl, {
+        'User-Agent': `FMP-Video-Player/${currentVersion}`,
+        Accept: 'application/json',
+      })
+
+      if (response.status === 404) {
+        continue
+      }
+
+      if (response.status < 200 || response.status >= 300) {
+        errors.push(`update.json@${branch}: HTTP ${response.status}`)
+        continue
+      }
+
+      const parsed = JSON.parse(response.body) as {
+        version?: unknown
+        downloadUrl?: unknown
+        releaseNotes?: unknown
+      }
+      const version = normalizeVersionTag(String(parsed.version ?? ''))
+      if (!version) {
+        continue
+      }
+
+      const downloadUrl =
+        typeof parsed.downloadUrl === 'string' && parsed.downloadUrl
+          ? parsed.downloadUrl
+          : releaseUrl
+
+      return {
+        version,
+        downloadUrl,
+        releaseUrl: downloadUrl.includes('github.com') ? downloadUrl : releaseUrl,
+        releaseNotes: typeof parsed.releaseNotes === 'string' ? parsed.releaseNotes : '',
+      }
+    } catch (error) {
+      errors.push(`update.json@${branch}: ${formatNetworkError(error)}`)
+    }
+  }
+
+  for (const branch of DEFAULT_BRANCHES) {
+    const packageUrl = `https://raw.githubusercontent.com/${UPDATE_REPO.owner}/${UPDATE_REPO.name}/${branch}/package.json`
+    try {
+      const response = await requestText(packageUrl, {
+        'User-Agent': `FMP-Video-Player/${currentVersion}`,
+        Accept: 'application/json',
+      })
+
+      if (response.status === 404) {
+        continue
+      }
+
+      if (response.status < 200 || response.status >= 300) {
+        errors.push(`package.json@${branch}: HTTP ${response.status}`)
+        continue
+      }
+
+      const parsed = JSON.parse(response.body) as { version?: unknown }
+      const version = normalizeVersionTag(String(parsed.version ?? ''))
+      if (!version) {
+        continue
+      }
+
+      return {
+        version,
+        downloadUrl: releaseUrl,
+        releaseUrl,
+        releaseNotes: '',
+      }
+    } catch (error) {
+      errors.push(`package.json@${branch}: ${formatNetworkError(error)}`)
+    }
+  }
+
+  if (errors.length > 0) {
+    throw new Error(errors.join(' | '))
+  }
+
+  return null
+}
+
+function manifestFromGitHubRelease(release: GitHubRelease): UpdateManifest | null {
+  const version = normalizeVersionTag(String(release.tag_name ?? ''))
+  if (!version) {
+    return null
+  }
+
+  const releaseUrl =
+    typeof release.html_url === 'string' && release.html_url
+      ? release.html_url
+      : `https://github.com/${UPDATE_REPO.owner}/${UPDATE_REPO.name}/releases/latest`
+
+  return {
+    version,
+    releaseUrl,
+    downloadUrl: pickDownloadUrl(release.assets, releaseUrl),
+    releaseNotes: typeof release.body === 'string' ? release.body.trim() : '',
+  }
+}
+
+function githubHeaders(currentVersion: string): Record<string, string> {
+  return {
+    Accept: 'application/vnd.github+json',
+    'User-Agent': `FMP-Video-Player/${currentVersion}`,
+    'X-GitHub-Api-Version': '2022-11-28',
+  }
+}
+
 async function requestText(
   url: string,
   headers: Record<string, string>,
 ): Promise<HttpJsonResponse> {
   const errors: string[] = []
 
-  // Chromium stack — uses OS/user trusted CAs (important for NetFree and similar filters).
   try {
     return await chromiumRequest(url, headers)
   } catch (error) {
     errors.push(`chromium: ${formatNetworkError(error)}`)
   }
 
-  // Node fallback with default verification.
   try {
     return await nodeHttpsRequest(url, headers, true)
   } catch (error) {
     errors.push(`node: ${formatNetworkError(error)}`)
   }
 
-  // Last resort for intercepted TLS proxies that aren't in Node's CA store.
   try {
     return await nodeHttpsRequest(url, headers, false)
   } catch (error) {
