@@ -15,6 +15,15 @@ if (fs.existsSync(path.join(localElectronDist, 'electron.exe'))) {
   args.push(`--config.electronDist=${localElectronDist}`)
 }
 
+// CI auto-detects publish when electron-builder.yml has a publish block.
+// Releases are uploaded separately by GitHub Actions, so default to never.
+const hasPublishFlag = args.some(
+  (arg) => arg === '--publish' || arg.startsWith('--publish='),
+)
+if (!hasPublishFlag) {
+  args.push('--publish', 'never')
+}
+
 const child = spawn('npx', ['electron-builder', ...args], {
   stdio: 'inherit',
   shell: true,
