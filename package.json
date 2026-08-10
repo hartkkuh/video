@@ -14,7 +14,8 @@
     "icons": "node scripts/generate-icon.mjs",
     "sync:update": "node scripts/sync-update-json.mjs",
     "dist": "npm run sync:update && npm run icons && npm run build && node scripts/dist.mjs --win nsis",
-    "dist:dir": "npm run sync:update && npm run icons && npm run build && node scripts/dist.mjs --win dir"
+    "dist:dir": "npm run sync:update && npm run icons && npm run build && node scripts/dist.mjs --win dir",
+    "dist:publish": "npm run sync:update && npm run icons && npm run build && node scripts/dist.mjs --win nsis --publish always"
   },
   "dependencies": {
     "i18next": "^26.3.2",

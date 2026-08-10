@@ -5,6 +5,11 @@ electronDist: node_modules/electron/dist
 directories:
   output: release
   buildResources: build
+publish:
+  provider: github
+  owner: hartkkuh
+  repo: video
+  releaseType: release
 files:
   - dist/**/*
   - dist-electron/**/*

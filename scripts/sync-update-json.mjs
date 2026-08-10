@@ -10,6 +10,10 @@ if (!version) {
   process.exit(1)
 }
 
+const productName = 'FMP Video Player'
+const setupFileName = `${productName}-Setup-${version}.exe`
+const downloadUrl = `https://github.com/hartkkuh/video/releases/download/v${version}/${encodeURIComponent(setupFileName)}`
+
 const updatePath = path.join(root, 'update.json')
 const previous = fs.existsSync(updatePath)
   ? JSON.parse(fs.readFileSync(updatePath, 'utf8'))
@@ -17,12 +21,10 @@ const previous = fs.existsSync(updatePath)
 
 const next = {
   version,
-  downloadUrl:
-    typeof previous.downloadUrl === 'string' && previous.downloadUrl
-      ? previous.downloadUrl
-      : 'https://github.com/hartkkuh/video/releases/latest',
+  downloadUrl,
   releaseNotes: typeof previous.releaseNotes === 'string' ? previous.releaseNotes : '',
 }
 
 fs.writeFileSync(updatePath, `${JSON.stringify(next, null, 2)}\n`, 'utf8')
 console.log(`Synced update.json → ${version}`)
+console.log(`Download URL → ${downloadUrl}`)
