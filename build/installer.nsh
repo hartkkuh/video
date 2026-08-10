@@ -25,10 +25,13 @@
   !macroend
 
   !macro customPageAfterChangeDir
-    !insertmacro skipPageIfUpdated
     Page custom createAssociateVideoPage leaveAssociateVideoPage
 
     Function createAssociateVideoPage
+      ${If} ${isUpdated}
+        Abort
+      ${EndIf}
+
       nsDialogs::Create 1018
       Pop $0
       ${If} $0 == error
