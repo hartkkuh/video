@@ -41,6 +41,20 @@ export function FileActionsRegistrar() {
         })()
       },
     })
+
+    void window.electronAPI?.getLaunchFiles?.().then((paths) => {
+      if (paths?.length) {
+        openPaths(paths)
+      }
+    })
+
+    const unsubscribeOpenFiles = window.electronAPI?.onOpenFiles?.((paths) => {
+      openPaths(paths)
+    })
+
+    return () => {
+      unsubscribeOpenFiles?.()
+    }
   }, [navigate, persistFilePaths, setActions, signalAutoplay])
 
   return null

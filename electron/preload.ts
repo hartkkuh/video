@@ -17,6 +17,18 @@ contextBridge.exposeInMainWorld('electronAPI', {
   checkForUpdates: () => ipcRenderer.invoke('updates:check') as Promise<UpdateCheckResult>,
   openUpdateDownload: (url: string) =>
     ipcRenderer.invoke('updates:open-download', url) as Promise<boolean>,
+  getLaunchFiles: () => ipcRenderer.invoke('app:get-launch-files') as Promise<string[]>,
+  onOpenFiles: (callback: (filePaths: string[]) => void) => {
+    const listener = (_event: unknown, filePaths: string[]) => {
+      if (Array.isArray(filePaths)) {
+        callback(filePaths)
+      }
+    }
+    ipcRenderer.on('app:open-files', listener)
+    return () => {
+      ipcRenderer.removeListener('app:open-files', listener)
+    }
+  },
   getSettings: () => ipcRenderer.invoke('settings:get') as Promise<AppSettings>,
   saveSettings: (settings: AppSettings) =>
     ipcRenderer.invoke('settings:save', settings) as Promise<AppSettings>,

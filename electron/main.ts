@@ -1,4 +1,5 @@
 import { app, BrowserWindow, dialog, ipcMain, Menu, nativeImage, screen } from 'electron'
+import { collectLaunchMediaFiles } from './launch-files.js'
 import { checkForAppUpdates, getCurrentAppVersion, openUpdateDownload } from './updates.js'
 import fs from 'node:fs'
 import fsPromises from 'node:fs/promises'
@@ -43,6 +44,36 @@ let filesMenuContent: unknown = null
 let rendererWatcher: fs.FSWatcher | null = null
 let vlcPlayer: VlcPlayerService | null = null
 let controlsOverlayWanted = false
+let pendingLaunchFiles = collectLaunchMediaFiles(process.argv)
+
+app.setAppUserModelId('com.fmp.videoplayer')
+
+const gotSingleInstanceLock = app.requestSingleInstanceLock()
+if (!gotSingleInstanceLock) {
+  app.quit()
+} else {
+  app.on('second-instance', (_event, argv) => {
+    const files = collectLaunchMediaFiles(argv)
+    if (files.length > 0) {
+      pendingLaunchFiles = files
+    }
+
+    if (!mainWindow || mainWindow.isDestroyed()) {
+      return
+    }
+
+    if (mainWindow.isMinimized()) {
+      mainWindow.restore()
+    }
+
+    mainWindow.show()
+    mainWindow.focus()
+
+    if (files.length > 0) {
+      mainWindow.webContents.send('app:open-files', files)
+    }
+  })
+}
 
 // While a native open/save dialog is shown, always-on-top overlay windows and
 // the native video layer must be tucked away or they intercept clicks.
@@ -664,6 +695,12 @@ ipcMain.handle('updates:open-download', async (_event, url: unknown) => {
   return openUpdateDownload(url)
 })
 
+ipcMain.handle('app:get-launch-files', () => {
+  const files = pendingLaunchFiles
+  pendingLaunchFiles = []
+  return files
+})
+
 ipcMain.handle('settings:get', async () => (await readStore()).settings)
 
 function broadcastSettings(settings: AppSettings) {
@@ -966,39 +1003,41 @@ ipcMain.handle(
   },
 )
 
-app.whenReady().then(() => {
-  // Hide the default File/Edit/View/Window menu bar; the app uses its own navbar.
-  Menu.setApplicationMenu(null)
+if (gotSingleInstanceLock) {
+  app.whenReady().then(() => {
+    // Hide the default File/Edit/View/Window menu bar; the app uses its own navbar.
+    Menu.setApplicationMenu(null)
 
-  ensureOverlayWatchdog()
-  app.on('browser-window-blur', (_event, window) => {
-    if (window === mainWindow) {
-      hideFloatingOverlays()
+    ensureOverlayWatchdog()
+    app.on('browser-window-blur', (_event, window) => {
+      if (window === mainWindow) {
+        hideFloatingOverlays()
+      }
+    })
+
+    registerVlcHandlers()
+    registerMediaProbeHandlers()
+    createWindow()
+    watchRenderer()
+
+    app.on('activate', () => {
+      if (BrowserWindow.getAllWindows().length === 0) {
+        createWindow()
+      }
+    })
+  })
+
+  app.on('window-all-closed', () => {
+    rendererWatcher?.close()
+    rendererWatcher = null
+
+    if (process.platform !== 'darwin') {
+      app.quit()
     }
   })
 
-  registerVlcHandlers()
-  registerMediaProbeHandlers()
-  createWindow()
-  watchRenderer()
-
-  app.on('activate', () => {
-    if (BrowserWindow.getAllWindows().length === 0) {
-      createWindow()
-    }
+  app.on('before-quit', () => {
+    vlcPlayer?.destroy()
+    vlcPlayer = null
   })
-})
-
-app.on('window-all-closed', () => {
-  rendererWatcher?.close()
-  rendererWatcher = null
-
-  if (process.platform !== 'darwin') {
-    app.quit()
-  }
-})
-
-app.on('before-quit', () => {
-  vlcPlayer?.destroy()
-  vlcPlayer = null
-})
+}

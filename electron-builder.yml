@@ -18,6 +18,36 @@ extraResources:
 asar: true
 asarUnpack:
   - '**/node_modules/koffi/**/*'
+fileAssociations:
+  - ext:
+      - mp4
+      - m4v
+      - mkv
+      - avi
+      - mov
+      - wmv
+      - webm
+      - mpg
+      - mpeg
+      - mpe
+      - flv
+      - f4v
+      - ts
+      - m2ts
+      - mts
+      - 3gp
+      - 3g2
+      - ogv
+      - asf
+      - vob
+      - divx
+      - rm
+      - rmvb
+      - wtv
+      - mxf
+    name: FMP.Video
+    description: Video File
+    role: Viewer
 win:
   icon: build/icon.ico
   target:
@@ -32,6 +62,7 @@ nsis:
   createDesktopShortcut: true
   createStartMenuShortcut: true
   shortcutName: FMP Video Player
+  include: build/installer.nsh
   installerIcon: build/icon.ico
   uninstallerIcon: build/icon.ico
   installerHeaderIcon: build/icon.ico

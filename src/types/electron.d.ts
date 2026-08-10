@@ -88,6 +88,8 @@ declare global {
       getAppVersion: () => Promise<string>
       checkForUpdates: () => Promise<UpdateCheckResult>
       openUpdateDownload: (url: string) => Promise<boolean>
+      getLaunchFiles: () => Promise<string[]>
+      onOpenFiles: (callback: (filePaths: string[]) => void) => () => void
       getSettings: () => Promise<AppSettings>
       saveSettings: (settings: AppSettings) => Promise<AppSettings>
       onSettingsChanged: (callback: (settings: AppSettings) => void) => () => void
