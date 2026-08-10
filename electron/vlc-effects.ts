@@ -115,36 +115,3 @@ export function buildVideoEffectMediaOptions(effects: VlcVideoEffects): string[]
 	]
 }
 
-/** VLC sout `vfilter=` chain so video effects are baked into a recording. */
-export function buildRecordingVideoFilter(effects: VlcVideoEffects): string | null {
-	const parts: string[] = []
-	const adjust = mapVideoEffectsToAdjust(effects)
-
-	if (adjust.enabled) {
-		parts.push(
-			`adjust{brightness=${adjust.brightness.toFixed(3)},contrast=${adjust.contrast.toFixed(3)},saturation=${adjust.saturation.toFixed(3)},hue=${adjust.hue.toFixed(2)},gamma=${adjust.gamma.toFixed(3)}}`,
-		)
-	}
-
-	if (effects.blur > 0) {
-		parts.push(`gaussianblur{sigma=${Math.max(0.1, effects.blur).toFixed(2)}}`)
-	}
-
-	return parts.length > 0 ? parts.join(':') : null
-}
-
-/** VLC sout `afilter=` equalizer so audio effects are baked into a recording. */
-export function buildRecordingAudioFilter(effects: VlcAudioEffects): string | null {
-	if (isDefaultAudioEffects(effects)) {
-		return null
-	}
-
-	const bands = Array.from({ length: 10 }, (_, index) => {
-		const amp = effects.bands[index] ?? 0
-		return amp.toFixed(1)
-	}).join(' ')
-
-	const preamp = outputGainToPreampDb(effects.outputGain).toFixed(2)
-	// No quotes around bands — nested quotes break the outer sout parser.
-	return `equalizer{preamp=${preamp},bands=${bands}}`
-}

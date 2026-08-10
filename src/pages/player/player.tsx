@@ -31,11 +31,16 @@ const logoSrc = `${import.meta.env.BASE_URL}logo.png`
 function buildSuggestedRecordingFileName(sourcePath: string, suffix: string): string {
   const fileName = getFileName(sourcePath)
   const dotIndex = fileName.lastIndexOf('.')
-  if (dotIndex <= 0) {
-    return `${fileName} ${suffix}`
-  }
+  const base = dotIndex > 0 ? fileName.slice(0, dotIndex) : fileName
+  // Video recordings are written as H.264/AAC MP4.
+  const extension =
+    getMediaKind(sourcePath) === 'video'
+      ? '.mp4'
+      : dotIndex > 0
+        ? fileName.slice(dotIndex)
+        : ''
 
-  return `${fileName.slice(0, dotIndex)} ${suffix}${fileName.slice(dotIndex)}`
+  return `${base} ${suffix}${extension}`
 }
 
 function formatRecordingElapsed(startedAt: number | null, nowMs: number): string {
@@ -71,8 +76,10 @@ export default function Player() {
     setCurrentIndex: persistCurrentIndex,
     setRepeatMode: persistRepeatMode,
     setShuffleEnabled: persistShuffleEnabled,
+    setVolume: persistVolume,
+    setVolumeMuted: persistVolumeMuted,
   } = useAppMemory()
-  const { filePaths, currentIndex, repeatMode, shuffleEnabled } = memory
+  const { filePaths, currentIndex, repeatMode, shuffleEnabled, volume } = memory
   const [errorKey, setErrorKey] = useState<'player.invalidFile' | null>(null)
   const [overlayControlsVisible, setOverlayControlsVisible] = useState(true)
   const [recordingActive, setRecordingActive] = useState(false)
@@ -151,7 +158,19 @@ export default function Player() {
     let cancelled = false
 
     void (async () => {
+      if (cancelled) {
+        return
+      }
+
       await window.electronAPI?.vlcSetVideoVisible?.(currentMediaKind === 'video')
+
+      // Navigating to Effects/Media mid-load must not leave videoVisible true,
+      // or a later focus-restore will paint the native video over that page.
+      if (cancelled) {
+        void window.electronAPI?.vlcSetVideoVisible?.(false)
+        return
+      }
+
       const result = await window.electronAPI?.vlcLoad?.(currentFilePath)
 
       if (cancelled) {
@@ -223,6 +242,9 @@ export default function Player() {
 
   useEffect(() => {
     if (!hasActiveMedia || currentMediaKind !== 'video') {
+      // Keep videoVisible false so focus-restore (resumeVideoOverlay) cannot
+      // resurrect the native window over Effects / Media / Settings.
+      void window.electronAPI?.vlcSetVideoVisible?.(false)
       window.electronAPI?.vlcHideVideoOverlay?.()
       lastViewportKeyRef.current = ''
       return
@@ -300,6 +322,11 @@ export default function Player() {
       window.visualViewport?.removeEventListener('resize', invalidateViewport)
       window.visualViewport?.removeEventListener('scroll', invalidateViewport)
       unsubscribeParentGeometry?.()
+      // videoVisible must go false on leave: tab switches on Effects/Media can
+      // spawn short-lived probe windows that blur/focus the main window, and
+      // restoreFloatingOverlaysIfNeeded would otherwise resume a still-visible
+      // video layer without the controls bar (Player is unmounted).
+      void window.electronAPI?.vlcSetVideoVisible?.(false)
       window.electronAPI?.vlcSuspendVideoOverlay?.()
       window.electronAPI?.hideControlsOverlay?.()
       lastViewportKeyRef.current = ''
@@ -496,8 +523,19 @@ export default function Player() {
       return
     }
 
+    // Elapsed time tracks only while playback (and thus recording) is running.
+    let lastTickMs = Date.now()
     const timerId = window.setInterval(() => {
-      setRecordingNowMs(Date.now())
+      void (async () => {
+        const now = Date.now()
+        const state = await window.electronAPI?.vlcGetState?.()
+        if (!state?.playing) {
+          const pausedDelta = now - lastTickMs
+          setRecordingStartedAt((prev) => (prev === null ? prev : prev + pausedDelta))
+        }
+        setRecordingNowMs(now)
+        lastTickMs = now
+      })()
     }, 500)
 
     return () => window.clearInterval(timerId)
@@ -771,19 +809,43 @@ export default function Player() {
     }
   }
 
-  useEffect(() => {
-    function handleKeyDown(event: KeyboardEvent) {
-      if (event.defaultPrevented || event.altKey || event.ctrlKey || event.metaKey) {
-        return
-      }
+  const goPreviousRef = useRef(goPrevious)
+  const goNextRef = useRef(goNext)
+  goPreviousRef.current = goPrevious
+  goNextRef.current = goNext
 
-      const target = event.target
-      if (
+  useEffect(() => {
+    // Audio mode: PlayerControls owns shortcuts (same window).
+    // Video mode: this handles main-window focus; the overlay handles its own.
+    if (!useControlsOverlayWindow) {
+      return
+    }
+
+    function isEditableTarget(target: EventTarget | null) {
+      return (
         target instanceof HTMLInputElement ||
         target instanceof HTMLSelectElement ||
         target instanceof HTMLTextAreaElement ||
         (target instanceof HTMLElement && target.isContentEditable)
-      ) {
+      )
+    }
+
+    async function seekBy(offsetMs: number) {
+      const state = await window.electronAPI?.vlcGetState?.()
+      if (!state) {
+        return
+      }
+
+      const nextMs = Math.max(0, state.currentTimeMs + offsetMs)
+      void window.electronAPI?.vlcSeek?.(nextMs)
+    }
+
+    function handleKeyDown(event: KeyboardEvent) {
+      if (event.defaultPrevented || event.altKey || event.metaKey) {
+        return
+      }
+
+      if (isEditableTarget(event.target)) {
         return
       }
 
@@ -791,33 +853,7 @@ export default function Player() {
         return
       }
 
-      if (event.key === 'ArrowLeft') {
-        event.preventDefault()
-        void (async () => {
-          const state = await window.electronAPI?.vlcGetState?.()
-          if (!state) {
-            return
-          }
-
-          const nextMs = Math.max(0, state.currentTimeMs - 10_000)
-          void window.electronAPI?.vlcSeek?.(nextMs)
-        })()
-      }
-
-      if (event.key === 'ArrowRight') {
-        event.preventDefault()
-        void (async () => {
-          const state = await window.electronAPI?.vlcGetState?.()
-          if (!state) {
-            return
-          }
-
-          const nextMs = state.currentTimeMs + 10_000
-          void window.electronAPI?.vlcSeek?.(nextMs)
-        })()
-      }
-
-      if (event.key === ' ') {
+      if (event.key === ' ' || event.code === 'Space') {
         event.preventDefault()
         void (async () => {
           const state = await window.electronAPI?.vlcGetState?.()
@@ -831,12 +867,49 @@ export default function Player() {
             void window.electronAPI?.vlcPlay?.()
           }
         })()
+        return
+      }
+
+      if (event.key === 'ArrowLeft' || event.key === 'ArrowRight') {
+        event.preventDefault()
+        const stepMs = event.ctrlKey ? 30_000 : 10_000
+        const direction = event.key === 'ArrowLeft' ? -1 : 1
+        void seekBy(direction * stepMs)
+        return
+      }
+
+      if (event.key === 'ArrowUp' || event.key === 'ArrowDown') {
+        event.preventDefault()
+        const delta = event.key === 'ArrowUp' ? 0.05 : -0.05
+        const nextVolume = Math.min(2, Math.max(0, Math.round((volume + delta) * 100) / 100))
+        persistVolume(nextVolume)
+        if (nextVolume > 0) {
+          persistVolumeMuted(false)
+        }
+        return
+      }
+
+      if (event.key === '+' || event.key === '=' || event.code === 'NumpadAdd') {
+        event.preventDefault()
+        goNextRef.current()
+        return
+      }
+
+      if (event.key === '-' || event.key === '_' || event.code === 'NumpadSubtract') {
+        event.preventDefault()
+        goPreviousRef.current()
       }
     }
 
     window.addEventListener('keydown', handleKeyDown)
     return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [hasActiveMedia])
+  }, [
+    hasActiveMedia,
+    persistVolume,
+    persistVolumeMuted,
+    useControlsOverlayWindow,
+    volume,
+  ])
 
   return (
     <section className={styles.playerCard}>

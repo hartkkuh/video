@@ -266,6 +266,7 @@ export default function PlayerControls({
     recordingTitle: t('recording.title'),
     recordingIdle: t('recording.idle'),
     recordingActive: t('recording.active'),
+    recordingPaused: t('recording.paused'),
     recordingStart: t('recording.start'),
     recordingStop: t('recording.stop'),
     recordingClose: t('recording.close'),
@@ -402,6 +403,82 @@ export default function PlayerControls({
     [currentTime, seekTo],
   )
 
+  useEffect(() => {
+    function isEditableTarget(target: EventTarget | null) {
+      return (
+        target instanceof HTMLInputElement ||
+        target instanceof HTMLSelectElement ||
+        target instanceof HTMLTextAreaElement ||
+        (target instanceof HTMLElement && target.isContentEditable)
+      )
+    }
+
+    function handleKeyDown(event: KeyboardEvent) {
+      if (event.defaultPrevented || event.altKey || event.metaKey) {
+        return
+      }
+
+      if (isEditableTarget(event.target)) {
+        return
+      }
+
+      if (!hasActiveMedia) {
+        return
+      }
+
+      onOverlayActivity?.()
+
+      if (event.key === ' ' || event.code === 'Space') {
+        event.preventDefault()
+        togglePlayback()
+        return
+      }
+
+      if (event.key === 'ArrowLeft' || event.key === 'ArrowRight') {
+        event.preventDefault()
+        const stepSeconds = event.ctrlKey ? 30 : 10
+        const direction = event.key === 'ArrowLeft' ? -1 : 1
+        skipSeconds(direction * stepSeconds)
+        return
+      }
+
+      if (event.key === 'ArrowUp' || event.key === 'ArrowDown') {
+        event.preventDefault()
+        const delta = event.key === 'ArrowUp' ? 0.05 : -0.05
+        const nextVolume = Math.min(2, Math.max(0, Math.round((volume + delta) * 100) / 100))
+        persistVolume(nextVolume)
+        if (nextVolume > 0) {
+          persistVolumeMuted(false)
+        }
+        return
+      }
+
+      if (event.key === '+' || event.key === '=' || event.code === 'NumpadAdd') {
+        event.preventDefault()
+        onGoNext()
+        return
+      }
+
+      if (event.key === '-' || event.key === '_' || event.code === 'NumpadSubtract') {
+        event.preventDefault()
+        onGoPrevious()
+      }
+    }
+
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [
+    hasActiveMedia,
+    onGoNext,
+    onGoPrevious,
+    onOverlayActivity,
+    persistVolume,
+    persistVolumeMuted,
+    skipSeconds,
+    togglePlayback,
+    volume,
+  ])
+
   const toggleFullscreen = useCallback(async () => {
     if (onToggleFullscreen) {
       onToggleFullscreen()
@@ -466,7 +543,7 @@ export default function PlayerControls({
           <span className={styles.recordingBarTitle}>{labels.recordingTitle}</span>
           <span className={styles.recordingBarStatus}>
             {recordingActive
-              ? `${labels.recordingActive} · ${recordingElapsedLabel}`
+              ? `${isPlaying ? labels.recordingActive : labels.recordingPaused} · ${recordingElapsedLabel}`
               : labels.recordingIdle}
           </span>
         </div>

@@ -24,6 +24,7 @@
     "title": "Traffic recording",
     "idle": "Ready to record",
     "active": "Recording",
+    "paused": "Paused",
     "start": "Start recording",
     "stop": "Stop recording",
     "close": "Close recording bar",

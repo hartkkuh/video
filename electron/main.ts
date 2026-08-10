@@ -94,22 +94,68 @@ function restoreControlsOverlayAfterFileDialog(hadVisibleControls: boolean) {
 }
 
 function isAppOwnedWindow(window: BrowserWindow | null | undefined): window is BrowserWindow {
+  // Any BrowserWindow from this process counts — including short-lived media
+  // probe hosts used by Effects/Media tabs. Treating those as "left the app"
+  // used to suspend/resume the native video layer and wipe the controls bar.
   return Boolean(
     window &&
       !window.isDestroyed() &&
-      (window === mainWindow || window === controlsWindow || window === filesMenuWindow),
+      BrowserWindow.getAllWindows().some((candidate) => candidate === window),
   )
 }
 
-function hideFloatingOverlays() {
-  // Wait for focus to settle so opening the navbar menu (a child overlay window)
-  // does not immediately hide that menu on main-window blur.
-  setTimeout(() => {
-    const focused = BrowserWindow.getFocusedWindow()
+function tuckFloatingOverlays() {
+  if (controlsWindow && !controlsWindow.isDestroyed()) {
+    // Drop out of the topmost band before hide — otherwise an always-on-top
+    // child can keep painting over other apps after the parent blurs.
+    controlsWindow.setAlwaysOnTop(false)
+    controlsWindow.hide()
+    controlsWindow.webContents.send('controls:suspended-relayed')
+  }
 
-    if (isAppOwnedWindow(focused)) {
-      if (focused === filesMenuWindow && controlsWindow && !controlsWindow.isDestroyed()) {
-        if (controlsWindow.isVisible()) {
+  if (filesMenuWindow && !filesMenuWindow.isDestroyed()) {
+    filesMenuRevealPending = false
+    filesMenuWindow.setAlwaysOnTop(false)
+    filesMenuWindow.webContents.send('files-menu:hide-relayed')
+    filesMenuWindow.hide()
+    filesMenuWindow.setIgnoreMouseEvents(true, { forward: true })
+  }
+
+  vlcPlayer?.suspendVideoOverlay()
+}
+
+function shouldKeepFloatingOverlays(): boolean {
+  if (!mainWindow || mainWindow.isDestroyed()) {
+    return false
+  }
+
+  // Minimized / hidden main → never keep always-on-top children on screen.
+  if (mainWindow.isMinimized() || !mainWindow.isVisible()) {
+    return false
+  }
+
+  if (mainWindow.isFocused()) {
+    return true
+  }
+
+  const focused = BrowserWindow.getFocusedWindow()
+
+  // Clicking the controls bar focuses that child and blurs main. That is still
+  // "inside the app" — tucking here used to suspend the video and leave a
+  // black hole under the navbar.
+  if (focused === controlsWindow || focused === filesMenuWindow) {
+    return true
+  }
+
+  return false
+}
+
+function hideFloatingOverlays() {
+  const run = () => {
+    if (shouldKeepFloatingOverlays()) {
+      if (BrowserWindow.getFocusedWindow() === filesMenuWindow) {
+        if (controlsWindow && !controlsWindow.isDestroyed()) {
+          controlsWindow.setAlwaysOnTop(false)
           controlsWindow.hide()
           controlsWindow.webContents.send('controls:suspended-relayed')
         }
@@ -117,26 +163,51 @@ function hideFloatingOverlays() {
       return
     }
 
-    if (controlsWindow && !controlsWindow.isDestroyed() && controlsWindow.isVisible()) {
-      controlsWindow.hide()
-      controlsWindow.webContents.send('controls:suspended-relayed')
-    }
+    tuckFloatingOverlays()
+  }
 
-    if (filesMenuWindow && !filesMenuWindow.isDestroyed() && filesMenuWindow.isVisible()) {
-      filesMenuRevealPending = false
-      filesMenuWindow.webContents.send('files-menu:hide-relayed')
-      filesMenuWindow.hide()
-      filesMenuWindow.setIgnoreMouseEvents(true, { forward: true })
-    }
-  }, 0)
+  // Focus can take a few ms to leave our process after blur. A single
+  // setTimeout(0) raced and left the always-on-top bar over other apps.
+  setTimeout(run, 50)
+  setTimeout(run, 200)
 }
 
-function restoreFloatingOverlaysIfNeeded() {
-  if (!mainWindow || mainWindow.isDestroyed() || !mainWindow.isFocused()) {
+// Safety net: if the always-on-top controls are still painted while the app
+// has no legitimate focus, tuck them. Covers focus races blur misses.
+let overlayWatchdog: ReturnType<typeof setInterval> | null = null
+
+function ensureOverlayWatchdog() {
+  if (overlayWatchdog) {
     return
   }
 
+  overlayWatchdog = setInterval(() => {
+    if (!controlsWindow || controlsWindow.isDestroyed() || !controlsWindow.isVisible()) {
+      return
+    }
+
+    if (!shouldKeepFloatingOverlays()) {
+      tuckFloatingOverlays()
+    }
+  }, 300)
+}
+
+function restoreFloatingOverlaysIfNeeded() {
+  if (!mainWindow || mainWindow.isDestroyed() || mainWindow.isMinimized()) {
+    return
+  }
+
+  if (!mainWindow.isVisible() || !mainWindow.isFocused()) {
+    return
+  }
+
+  // Clears the blur-time suspend flag. Safe off the player page because the
+  // renderer sets videoVisible=false when leaving /player, so applyVisibility
+  // keeps the native window hidden (and controls stay down unless wanted).
+  vlcPlayer?.resumeVideoOverlay()
+
   if (controlsOverlayWanted && controlsWindow && !controlsWindow.isDestroyed()) {
+    controlsWindow.setAlwaysOnTop(true, 'pop-up-menu')
     controlsWindow.showInactive()
     controlsWindow.setIgnoreMouseEvents(true, { forward: true })
     vlcPlayer?.raiseControlsOverlay()
@@ -449,6 +520,12 @@ function createWindow() {
   mainWindow.on('focus', restoreFloatingOverlaysIfNeeded)
   mainWindow.on('hide', hideFloatingOverlays)
   mainWindow.on('show', restoreFloatingOverlaysIfNeeded)
+  // Minimize must tuck overlays immediately — blur alone can see focus on the
+  // always-on-top child and skip hiding, leaving controls over other apps.
+  mainWindow.on('minimize', () => {
+    tuckFloatingOverlays()
+  })
+  mainWindow.on('restore', restoreFloatingOverlaysIfNeeded)
 
   if (isDev) {
     mainWindow.webContents.openDevTools({ mode: 'detach' })
@@ -488,6 +565,9 @@ function ensureControlsWindow(): BrowserWindow | null {
     movable: false,
     minimizable: false,
     maximizable: false,
+    // Keep focus on the main window so clicking controls does not blur it
+    // (blur used to tuck the video layer and leave a black stage).
+    focusable: false,
     minWidth: 1,
     minHeight: 1,
     hasShadow: false,
@@ -862,14 +942,16 @@ ipcMain.handle(
       return null
     }
 
+    const suggestedExtension = path.extname(suggestedFileName).replace('.', '')
     const sourceExtension = path.extname(sourcePath).replace('.', '')
+    const dialogExtension = suggestedExtension || sourceExtension
     const defaultPath = path.join(path.dirname(sourcePath), suggestedFileName)
 
     return withFileDialog(async () => {
       const result = await dialog.showSaveDialog(mainWindow!, {
         defaultPath,
-        filters: sourceExtension
-          ? [{ name: sourceExtension.toUpperCase(), extensions: [sourceExtension] }]
+        filters: dialogExtension
+          ? [{ name: dialogExtension.toUpperCase(), extensions: [dialogExtension] }]
           : undefined,
       })
 
@@ -885,6 +967,13 @@ ipcMain.handle(
 app.whenReady().then(() => {
   // Hide the default File/Edit/View/Window menu bar; the app uses its own navbar.
   Menu.setApplicationMenu(null)
+
+  ensureOverlayWatchdog()
+  app.on('browser-window-blur', (_event, window) => {
+    if (window === mainWindow) {
+      hideFloatingOverlays()
+    }
+  })
 
   registerVlcHandlers()
   registerMediaProbeHandlers()

@@ -22,12 +22,9 @@ export type ViewportBounds = {
 }
 
 import {
-	buildRecordingAudioFilter,
-	buildRecordingVideoFilter,
 	buildVideoEffectMediaOptions,
 	defaultVlcVideoEffects,
 	isDefaultAudioEffects,
-	isDefaultVideoEffects,
 	mapVideoEffectsToAdjust,
 	outputGainToPreampDb,
 	videoEffectsUseMediaFilters,
@@ -35,6 +32,7 @@ import {
 	type VlcVideoEffects,
 } from './vlc-effects.js'
 import { HWND_TOP, SWP_NOACTIVATE, SWP_NOMOVE, SWP_NOSIZE, getWin32User32, hwndFromBuffer, hwndToNumber } from './win32-api.js'
+import { VLC_VIDEO_EXTENSIONS } from '../shared/vlc-media-extensions.js'
 
 export type { VlcAudioEffects, VlcVideoEffects } from './vlc-effects.js'
 
@@ -46,6 +44,8 @@ const LIBVLC_VOLUME_CALIBRATION = 1.5
 const LIBVLC_MAX_VOLUME = 200
 
 // Simple mux names only — nested avformat{...} inside duplicate{...} is unstable.
+// Values must match plugins actually present under libvlc/plugins/mux (this
+// bundle has no mkv/webm/flv muxers).
 const SOUT_MUX_BY_EXTENSION: Record<string, string> = {
 	'.mp4': 'mp4',
 	'.m4v': 'mp4',
@@ -56,9 +56,10 @@ const SOUT_MUX_BY_EXTENSION: Record<string, string> = {
 	'.3gp': 'mp4',
 	'.3g2': 'mp4',
 	'.3gpp': 'mp4',
-	'.mkv': 'mkv',
-	'.mka': 'mkv',
-	'.webm': 'webm',
+	// No libmux_mkv / libmux_webm in the bundle — fall back at resolve time.
+	'.mkv': 'mp4',
+	'.mka': 'mp4',
+	'.webm': 'mp4',
 	'.avi': 'avi',
 	'.ts': 'ts',
 	'.m2ts': 'ts',
@@ -81,8 +82,8 @@ const SOUT_MUX_BY_EXTENSION: Record<string, string> = {
 	'.wmv': 'asf',
 	'.wma': 'asf',
 	'.wm': 'asf',
-	'.flv': 'flv',
-	'.f4v': 'flv',
+	'.flv': 'mp4',
+	'.f4v': 'mp4',
 	'.mp3': 'raw',
 	'.mp2': 'raw',
 	'.mp1': 'raw',
@@ -97,33 +98,10 @@ const SOUT_MUX_BY_EXTENSION: Record<string, string> = {
 	'.flac': 'raw',
 }
 
-const AUDIO_ONLY_EXTENSIONS = new Set([
-	'.mp3',
-	'.mp2',
-	'.mp1',
-	'.mpga',
-	'.mpa',
-	'.aac',
-	'.adts',
-	'.adt',
-	'.ac3',
-	'.a52',
-	'.dts',
-	'.flac',
-	'.wav',
-	'.wma',
-	'.m4a',
-	'.m4b',
-	'.oga',
-	'.opus',
-	'.spx',
-	'.mka',
-])
+const VIDEO_EXTENSION_SET = new Set<string>(VLC_VIDEO_EXTENSIONS)
 
-type RecordingCodecProfile = {
-	mux: string | null
-	/** Inner transcode{...} body, or null for stream-copy. */
-	transcode: string | null
+function isVideoSourcePath(filePath: string): boolean {
+	return VIDEO_EXTENSION_SET.has(path.extname(filePath).toLowerCase())
 }
 
 function selectSoutMux(destPath: string): string | null {
@@ -131,159 +109,39 @@ function selectSoutMux(destPath: string): string | null {
 	return SOUT_MUX_BY_EXTENSION[ext] ?? null
 }
 
-function isAudioOnlyPath(filePath: string): boolean {
-	return AUDIO_ONLY_EXTENSIONS.has(path.extname(filePath).toLowerCase())
-}
-
-function selectRecordingCodecProfile(destPath: string, audioOnly: boolean): RecordingCodecProfile {
-	const ext = path.extname(destPath).toLowerCase()
-	const mux = selectSoutMux(destPath)
-
-	if (audioOnly) {
-		if (ext === '.flac') {
-			return { mux, transcode: 'acodec=flac' }
-		}
-		if (ext === '.wav') {
-			return { mux, transcode: 'acodec=s16l,channels=2,samplerate=48000' }
-		}
-		if (ext === '.ogg' || ext === '.oga' || ext === '.opus') {
-			return { mux: mux ?? 'ogg', transcode: 'acodec=vorb,ab=256' }
-		}
-		if (ext === '.wma' || ext === '.asf') {
-			return { mux: mux ?? 'asf', transcode: 'acodec=wma,ab=256' }
-		}
-		return { mux: mux ?? 'raw', transcode: 'acodec=mp3,ab=320' }
-	}
-
-	// Realtime-friendly encode: file branch shares the CPU with live playback.
-	const h264 =
-		'vcodec=h264,venc=x264{preset=ultrafast,tune=zerolatency,crf=28},scale=1,threads=0'
-
-	if (ext === '.webm') {
-		return {
-			mux: 'webm',
-			transcode: 'vcodec=VP80,vb=1800,scale=1,acodec=vorb,ab=160,channels=2,samplerate=44100',
-		}
-	}
-
-	if (ext === '.ogg' || ext === '.ogv' || ext === '.ogm') {
-		return {
-			mux: 'ogg',
-			transcode: 'vcodec=theo,vb=1800,scale=1,acodec=vorb,ab=160,channels=2,samplerate=44100',
-		}
-	}
-
-	if (ext === '.avi') {
-		return {
-			mux: 'avi',
-			transcode: `${h264},acodec=mp3,ab=160,channels=2,samplerate=44100`,
-		}
-	}
-
-	if (ext === '.wmv' || ext === '.asf' || ext === '.wm') {
-		return {
-			mux: 'asf',
-			transcode: `${h264},acodec=wma,ab=160,channels=2,samplerate=44100`,
-		}
-	}
-
-	if (ext === '.ts' || ext === '.m2ts' || ext === '.mts' || ext === '.m2t' || ext === '.tts') {
-		return {
-			mux: 'ts',
-			transcode: `${h264},acodec=mp4a,ab=160,channels=2,samplerate=44100`,
-		}
-	}
-
-	// Default H.264 / AAC for mp4/mov/mkv and unknown containers.
-	return {
-		mux: mux ?? 'mp4',
-		transcode: `${h264},acodec=mp4a,ab=160,channels=2,samplerate=44100`,
-	}
-}
-
-/** Audio encode fragment used when video can be stream-copied. */
-function selectAudioTranscodeFragment(destPath: string): string {
-	const ext = path.extname(destPath).toLowerCase()
-	if (ext === '.flac') {
-		return 'acodec=flac'
-	}
-	if (ext === '.wav') {
-		return 'acodec=s16l,channels=2,samplerate=44100'
-	}
-	if (ext === '.ogg' || ext === '.oga' || ext === '.ogv' || ext === '.ogm' || ext === '.opus' || ext === '.webm') {
-		return 'acodec=vorb,ab=160'
-	}
-	if (ext === '.wma' || ext === '.asf' || ext === '.wmv' || ext === '.wm') {
-		return 'acodec=wma,ab=160'
-	}
-	if (ext === '.avi' || ext === '.mp3') {
-		return 'acodec=mp3,ab=160'
-	}
-	return 'acodec=mp4a,ab=160,channels=2,samplerate=44100'
-}
-
-function buildRecordingMediaOptions(
-	destPath: string,
-	sourcePath: string,
-	videoEffects: VlcVideoEffects,
-	audioEffects: VlcAudioEffects | null,
-): string[] {
+/**
+ * Build sout options for the headless recording player.
+ *
+ * Video → H.264/AAC MP4. Proven with this libVLC:
+ * - stream-copy into mp4 → audio only
+ * - `#duplicate{dst=display,dst=transcode...}` → often no file
+ * - `#transcode{...}:duplicate{dst=display,dst=std{...}}` → MP4 with A+V,
+ *   realtime-paced by the display branch
+ * Audio → stream-copy.
+ */
+function buildRecordingMediaOptions(destPath: string, sourcePath: string): string[] {
 	// Forward slashes keep Windows paths stable inside the VLC sout parser.
 	const safePath = destPath.replace(/\\/g, '/').replace(/["']/g, '')
-	const audioOnly = isAudioOnlyPath(sourcePath)
-	const videoFilter = audioOnly ? null : buildRecordingVideoFilter(videoEffects)
-	const audioFilter = audioEffects ? buildRecordingAudioFilter(audioEffects) : null
-	const needsTranscode =
-		videoFilter !== null ||
-		audioFilter !== null ||
-		(!audioOnly && !isDefaultVideoEffects(videoEffects))
+	const video = isVideoSourcePath(sourcePath)
+	const head = [':vout=dummy', ':aout=dummy', ':no-video-title-show']
 
-	const mux = selectSoutMux(destPath)
-	const fileDst = mux
-		? `std{access=file,mux=${mux},dst='${safePath}'}`
-		: `std{access=file,dst='${safePath}'}`
-
-	if (!needsTranscode) {
-		// No active effects — stream-copy keeps original quality/format.
+	if (video) {
+		// Transcode FIRST, then split — nested transcode inside duplicate fails.
 		return [
-			`:sout=#duplicate{dst=display,dst=${fileDst}}`,
-			':sout-keep',
+			...head,
+			`:sout=#transcode{vcodec=h264,venc=x264{preset=ultrafast},acodec=mp4a,ab=192,channels=2,samplerate=44100}:duplicate{dst=display,dst=std{access=file,mux=mp4,dst='${safePath}'}}`,
 			':sout-all',
 		]
 	}
 
-	// Keep display on the raw decode path (smooth preview). Only the file branch
-	// is transcoded. When only audio effects are active, copy video as-is so the
-	// encoder does not fight the live decoder for CPU.
-	const profile = selectRecordingCodecProfile(destPath, audioOnly)
-	const transcodeParts: string[] = []
-
-	if (audioOnly) {
-		if (profile.transcode) {
-			transcodeParts.push(profile.transcode)
-		}
-	} else if (videoFilter) {
-		if (profile.transcode) {
-			transcodeParts.push(profile.transcode)
-		}
-		transcodeParts.push(`vfilter=${videoFilter}`)
-	} else {
-		// Audio effects only — stream-copy video, re-encode audio with afilter.
-		transcodeParts.push(`vcodec=copy,${selectAudioTranscodeFragment(destPath)}`)
-	}
-
-	if (audioFilter) {
-		transcodeParts.push(`afilter=${audioFilter}`)
-	}
-
-	const profileMux = profile.mux
-	const encodedFileDst = profileMux
-		? `std{access=file,mux=${profileMux},dst='${safePath}'}`
-		: fileDst
+	const mux = selectSoutMux(destPath)
+	const fileDst = mux && mux !== 'raw'
+		? `std{access=file,mux=${mux},dst='${safePath}'}`
+		: `std{access=file,dst='${safePath}'}`
 
 	return [
-		`:sout=#duplicate{dst=display,dst=transcode{${transcodeParts.join(',')}}:${encodedFileDst}}`,
-		':sout-keep',
+		...head,
+		`:sout=#duplicate{dst=display,dst=${fileDst}}`,
 		':sout-all',
 	]
 }
@@ -312,12 +170,22 @@ export class VlcPlayerService {
 	private pendingAudioEffects: VlcAudioEffects | null = null
 	private pendingVolume = 1
 	private pendingVolumeMuted = false
+	private pendingRate = 1
 	private activeVideoEffects: VlcVideoEffects = { ...defaultVlcVideoEffects }
 	private uiOverlayPrioritized = false
 	private lastAppliedScreenBounds: { x: number; y: number; width: number; height: number } | null = null
 	private recordingPath: string | null = null
+	// Recording runs on a dedicated, headless media player so the on-screen
+	// player keeps a smooth, embedded preview. Sharing one player's vout with a
+	// sout `display` branch crashes libVLC, hence the full isolation.
+	private recordingPlayer: unknown = null
+	private recordingMedia: unknown = null
+	// Dedicated instance created with `--vout=dummy --aout=dummy` so the sout
+	// `display` branch (used for realtime pacing) never opens a window.
+	private recordingInstance: unknown = null
 
 	private libvlc_new: (argc: number, argv: unknown) => unknown
+	private libvlc_new_args: (argc: number, argv: string[]) => unknown
 	private libvlc_release: (instance: unknown) => void
 	private libvlc_errmsg: () => string | null
 	private libvlc_media_new_path: (instance: unknown, path: string) => unknown
@@ -328,7 +196,7 @@ export class VlcPlayerService {
 	private libvlc_media_player_set_media: (player: unknown, media: unknown) => void
 	private libvlc_media_player_set_hwnd: (player: unknown, hwnd: bigint) => void
 	private libvlc_media_player_play: (player: unknown) => number
-	private libvlc_media_player_pause: (player: unknown) => void
+	private libvlc_media_player_set_pause: (player: unknown, doPause: number) => void
 	private libvlc_media_player_stop: (player: unknown) => void
 	private libvlc_media_player_set_time: (player: unknown, timeMs: number) => void
 	private libvlc_media_player_get_time: (player: unknown) => number
@@ -359,6 +227,7 @@ export class VlcPlayerService {
 		const lib = koffi.load(path.join(libvlcDir, 'libvlc.dll'))
 
 		this.libvlc_new = lib.func('libvlc_new', 'void *', ['int', 'void *'])
+		this.libvlc_new_args = lib.func('libvlc_new', 'void *', ['int', 'char **'])
 		this.libvlc_release = lib.func('libvlc_release', 'void', ['void *'])
 		this.libvlc_errmsg = lib.func('libvlc_errmsg', 'str', [])
 		this.libvlc_media_new_path = lib.func('libvlc_media_new_path', 'void *', ['void *', 'str'])
@@ -369,7 +238,7 @@ export class VlcPlayerService {
 		this.libvlc_media_player_set_media = lib.func('libvlc_media_player_set_media', 'void', ['void *', 'void *'])
 		this.libvlc_media_player_set_hwnd = lib.func('libvlc_media_player_set_hwnd', 'void', ['void *', 'int64'])
 		this.libvlc_media_player_play = lib.func('libvlc_media_player_play', 'int', ['void *'])
-		this.libvlc_media_player_pause = lib.func('libvlc_media_player_pause', 'void', ['void *'])
+		this.libvlc_media_player_set_pause = lib.func('libvlc_media_player_set_pause', 'void', ['void *', 'int'])
 		this.libvlc_media_player_stop = lib.func('libvlc_media_player_stop', 'void', ['void *'])
 		this.libvlc_media_player_set_time = lib.func('libvlc_media_player_set_time', 'void', ['void *', 'int64'])
 		this.libvlc_media_player_get_time = lib.func('libvlc_media_player_get_time', 'int64', ['void *'])
@@ -516,6 +385,7 @@ export class VlcPlayerService {
 		this.mediaLoaded = false
 		// Recording is bound to the media traffic of the current file; a new
 		// file always starts without an active recording.
+		this.teardownRecordingPlayer()
 		this.recordingPath = null
 		this.currentFilePath = filePath
 
@@ -556,29 +426,30 @@ export class VlcPlayerService {
 		this.prepareVideoOutput()
 		this.libvlc_media_player_play(this.mediaPlayer)
 		this.refreshEffectsAfterPipeline()
+		this.syncRecordingTransport('play')
 	}
 
 	pause() {
-		this.libvlc_media_player_pause(this.mediaPlayer)
+		this.libvlc_media_player_set_pause(this.mediaPlayer, 1)
+		this.syncRecordingTransport('pause')
 	}
 
 	stop() {
 		this.libvlc_media_player_stop(this.mediaPlayer)
+		// Keep the recording file from advancing while playback is stopped.
+		this.syncRecordingTransport('pause')
 	}
 
 	seek(timeMs: number) {
-		this.libvlc_media_player_set_time(this.mediaPlayer, Math.max(0, Math.round(timeMs)))
+		const clamped = Math.max(0, Math.round(timeMs))
+		this.libvlc_media_player_set_time(this.mediaPlayer, clamped)
+		this.syncRecordingTransport('seek', clamped)
 	}
 
 	setVolume(volume: number) {
 		this.pendingVolume = Math.min(2, Math.max(0, volume))
 
 		if (!this.mediaLoaded) {
-			return
-		}
-
-		if (this.recordingPath) {
-			this.applyVolumeSettingsForRecording()
 			return
 		}
 
@@ -592,20 +463,21 @@ export class VlcPlayerService {
 			return
 		}
 
-		if (this.recordingPath) {
-			this.applyVolumeSettingsForRecording()
-			return
-		}
-
 		this.applyVolumeSettings()
 	}
 
 	setRate(rate: number) {
+		this.pendingRate = rate
+
 		if (!this.mediaLoaded) {
 			return
 		}
 
 		this.libvlc_media_player_set_rate(this.mediaPlayer, rate)
+
+		if (this.recordingPlayer) {
+			this.libvlc_media_player_set_rate(this.recordingPlayer, rate)
+		}
 	}
 
 	setAudioEffects(effects: VlcAudioEffects) {
@@ -615,11 +487,8 @@ export class VlcPlayerService {
 			return
 		}
 
-		// File EQ is baked at recording start; live EQ still drives the display.
 		this.applyAudioEffects(effects)
-		if (!this.recordingPath) {
-			this.refreshEffectsAfterPipeline()
-		}
+		this.refreshEffectsAfterPipeline()
 	}
 
 	setVideoEffects(effects: VlcVideoEffects) {
@@ -627,13 +496,6 @@ export class VlcPlayerService {
 		this.activeVideoEffects = effects
 
 		if (!this.mediaLoaded) {
-			return
-		}
-
-		// While recording, keep display adjust in sync but do not reload media
-		// (that would restart the sout file). File effects stay as baked at start.
-		if (this.recordingPath) {
-			this.applyVideoAdjust(effects)
 			return
 		}
 
@@ -652,38 +514,82 @@ export class VlcPlayerService {
 	}
 
 	/**
-	 * Record the media traffic into destPath. Active effects are baked into the
-	 * file via a dedicated transcode branch; the display stays on the normal
-	 * decode path (with live adjust/EQ) so playback remains smooth.
+	 * Record the current media into destPath via a separate headless player.
+	 * Video is remuxed (H.264/AAC) so both tracks are kept; the on-screen
+	 * player is never touched. Pause/seek follow the main transport.
 	 */
 	startRecording(destPath: string): { ok: boolean; error?: string } {
 		if (!this.mediaLoaded || !this.currentFilePath) {
 			return { ok: false, error: 'No media loaded' }
 		}
 
+		if (this.recordingPlayer) {
+			return { ok: false, error: 'Recording already in progress' }
+		}
+
 		try {
+			// Headless instance: `--vout=dummy --aout=dummy` keeps the sout
+			// `display` pacing branch from ever opening a window or echoing audio.
+			const recordingInstance = this.libvlc_new_args(4, [
+				'--vout=dummy',
+				'--aout=dummy',
+				'--no-video-title-show',
+				'--quiet',
+			])
+			if (!recordingInstance) {
+				return { ok: false, error: this.libvlc_errmsg() ?? 'Failed to init recording engine' }
+			}
+
+			const recordingMedia = this.libvlc_media_new_path(recordingInstance, this.currentFilePath)
+			if (!recordingMedia) {
+				this.libvlc_release(recordingInstance)
+				return { ok: false, error: this.libvlc_errmsg() ?? 'Failed to open source for recording' }
+			}
+
+			for (const option of buildRecordingMediaOptions(destPath, this.currentFilePath)) {
+				this.libvlc_media_add_option(recordingMedia, option)
+			}
+
+			const recordingPlayer = this.libvlc_media_player_new(recordingInstance)
+			if (!recordingPlayer) {
+				this.libvlc_media_release(recordingMedia)
+				this.libvlc_release(recordingInstance)
+				return { ok: false, error: this.libvlc_errmsg() ?? 'Failed to create recording player' }
+			}
+
+			this.libvlc_media_player_set_media(recordingPlayer, recordingMedia)
+
+			if (this.libvlc_media_player_play(recordingPlayer) !== 0) {
+				this.libvlc_media_player_release(recordingPlayer)
+				this.libvlc_media_release(recordingMedia)
+				this.libvlc_release(recordingInstance)
+				return { ok: false, error: this.libvlc_errmsg() ?? 'Failed to start recording' }
+			}
+
+			// Start the recording from the position currently on screen.
+			const currentTimeMs = Math.max(0, Number(this.libvlc_media_player_get_time(this.mediaPlayer)))
+			if (currentTimeMs > 0) {
+				this.libvlc_media_player_set_time(recordingPlayer, currentTimeMs)
+			}
+
+			// Match the on-screen pause state so recording does not run ahead.
+			const mainState = this.libvlc_media_player_get_state(this.mediaPlayer)
+			if (mainState === LIBVLC_STATE_PAUSED || mainState === LIBVLC_STATE_ENDED) {
+				this.libvlc_media_player_set_pause(recordingPlayer, 1)
+			}
+
+			this.recordingInstance = recordingInstance
+			this.recordingPlayer = recordingPlayer
+			this.recordingMedia = recordingMedia
 			this.recordingPath = destPath
-			this.reloadMediaPreservePosition()
 
-			if (!this.mediaLoaded) {
-				this.recordingPath = null
-				return {
-					ok: false,
-					error: this.libvlc_errmsg() ?? 'Failed to reload media for recording',
-				}
+			if (this.pendingRate > 0 && this.pendingRate !== 1) {
+				this.libvlc_media_player_set_rate(recordingPlayer, this.pendingRate)
 			}
 
-			// Ensure media traffic is flowing so the sout file destination receives data.
-			const state = this.libvlc_media_player_get_state(this.mediaPlayer)
-			if (state !== LIBVLC_STATE_PLAYING) {
-				this.prepareVideoOutput()
-				this.libvlc_media_player_play(this.mediaPlayer)
-			}
-
-			// Restore live display effects after the pipeline switch.
-			this.refreshEffectsAfterPipeline()
 			return { ok: true }
 		} catch (error) {
+			this.teardownRecordingPlayer()
 			this.recordingPath = null
 			console.error('Failed to start recording:', error)
 			return {
@@ -694,17 +600,57 @@ export class VlcPlayerService {
 	}
 
 	stopRecording() {
-		if (!this.recordingPath) {
+		if (!this.recordingPath && !this.recordingPlayer) {
 			return
 		}
 
+		// Stopping the headless player flushes the muxer and finalizes the file.
+		this.teardownRecordingPlayer()
 		this.recordingPath = null
+	}
 
-		if (this.mediaLoaded && this.currentFilePath) {
-			// Reload without the sout chain so playback returns to plain output
-			// and the recording file is finalized. Effects are re-applied afterwards.
-			this.reloadMediaPreservePosition()
+	private teardownRecordingPlayer() {
+		if (this.recordingPlayer) {
+			this.libvlc_media_player_stop(this.recordingPlayer)
+			this.libvlc_media_player_release(this.recordingPlayer)
+			this.recordingPlayer = null
 		}
+
+		if (this.recordingMedia) {
+			this.libvlc_media_release(this.recordingMedia)
+			this.recordingMedia = null
+		}
+
+		if (this.recordingInstance) {
+			this.libvlc_release(this.recordingInstance)
+			this.recordingInstance = null
+		}
+	}
+
+	/** Keep the headless recording player aligned with on-screen transport. */
+	private syncRecordingTransport(action: 'play' | 'pause' | 'seek', timeMs = 0) {
+		if (!this.recordingPlayer) {
+			return
+		}
+
+		if (action === 'pause') {
+			this.libvlc_media_player_set_pause(this.recordingPlayer, 1)
+			return
+		}
+
+		if (action === 'seek') {
+			this.libvlc_media_player_set_time(this.recordingPlayer, timeMs)
+			// Seeking must not accidentally resume a paused recording.
+			const mainState = this.libvlc_media_player_get_state(this.mediaPlayer)
+			if (mainState === LIBVLC_STATE_PAUSED || mainState === LIBVLC_STATE_ENDED) {
+				this.libvlc_media_player_set_pause(this.recordingPlayer, 1)
+			}
+			return
+		}
+
+		// Resume only — calling play() again can reopen the sout chain and
+		// restart/corrupt the output file.
+		this.libvlc_media_player_set_pause(this.recordingPlayer, 0)
 	}
 
 	isRecording(): boolean {
@@ -743,6 +689,8 @@ export class VlcPlayerService {
 			this.videoWindow = null
 		}
 
+		this.teardownRecordingPlayer()
+
 		if (this.media) {
 			this.libvlc_media_release(this.media)
 			this.media = null
@@ -765,14 +713,7 @@ export class VlcPlayerService {
 	}
 
 	private applyPendingEffects() {
-		// Display uses the normal decode path even while recording, so adjust/EQ
-		// stay on for a smooth preview. File-side effects are in the separate
-		// transcode branch. Avoid volume-boost equalizer during recording.
-		if (this.recordingPath) {
-			this.applyVolumeSettingsForRecording()
-		} else {
-			this.applyVolumeSettings()
-		}
+		this.applyVolumeSettings()
 
 		if (this.pendingAudioEffects) {
 			this.applyAudioEffects(this.pendingAudioEffects)
@@ -826,16 +767,6 @@ export class VlcPlayerService {
 	}
 
 	/** Volume only — never touches the equalizer (safe while sout is active). */
-	private applyVolumeSettingsForRecording() {
-		if (this.pendingVolumeMuted) {
-			this.libvlc_audio_set_volume(this.mediaPlayer, 0)
-			return
-		}
-
-		const volume = Math.min(1, Math.max(0, this.pendingVolume))
-		this.libvlc_audio_set_volume(this.mediaPlayer, this.uiVolumeToLibVlcVolume(volume))
-	}
-
 	private uiVolumeToLibVlcVolume(volume: number): number {
 		return Math.min(
 			LIBVLC_MAX_VOLUME,
@@ -915,22 +846,8 @@ export class VlcPlayerService {
 			return null
 		}
 
-		if (this.recordingPath) {
-			// Do not attach :video-filter=* media options while sout is active —
-			// that combination crashes libVLC. File-side filters (including blur)
-			// are baked into the transcode vfilter/afilter chain instead.
-			for (const option of buildRecordingMediaOptions(
-				this.recordingPath,
-				filePath,
-				effects,
-				this.pendingAudioEffects,
-			)) {
-				this.libvlc_media_add_option(media, option)
-			}
-		} else {
-			for (const option of buildVideoEffectMediaOptions(effects)) {
-				this.libvlc_media_add_option(media, option)
-			}
+		for (const option of buildVideoEffectMediaOptions(effects)) {
+			this.libvlc_media_add_option(media, option)
 		}
 
 		return media
@@ -944,7 +861,6 @@ export class VlcPlayerService {
 		const currentTimeMs = Math.max(0, Number(this.libvlc_media_player_get_time(this.mediaPlayer)))
 		const state = this.libvlc_media_player_get_state(this.mediaPlayer)
 		const shouldResume = state === LIBVLC_STATE_PLAYING || state === LIBVLC_STATE_PAUSED
-		const recording = this.recordingPath !== null
 
 		this.libvlc_media_player_stop(this.mediaPlayer)
 
@@ -969,14 +885,7 @@ export class VlcPlayerService {
 		if (shouldResume) {
 			this.prepareVideoOutput()
 			this.libvlc_media_player_play(this.mediaPlayer)
-
-			// While recording, only apply the recording-safe volume path once.
-			// refreshEffectsAfterPipeline would re-touch filters and can crash sout.
-			if (recording) {
-				this.applyPendingEffects()
-			} else {
-				this.refreshEffectsAfterPipeline()
-			}
+			this.refreshEffectsAfterPipeline()
 			return
 		}
 
