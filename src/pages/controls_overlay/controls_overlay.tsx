@@ -11,6 +11,53 @@ import type {
 import styles from './controls_overlay.module.css'
 
 const HIDE_DELAY_MS = 2600
+const CURSOR_POLL_MS = 120
+const CURSOR_MOVE_THRESHOLD_PX = 3
+
+type ClientRectBox = {
+  left: number
+  top: number
+  right: number
+  bottom: number
+}
+
+function controlsHitRect(): ClientRectBox | null {
+  const root = document.querySelector('[data-player-controls-overlay]')
+  if (!(root instanceof HTMLElement)) {
+    return null
+  }
+
+  let left = Number.POSITIVE_INFINITY
+  let top = Number.POSITIVE_INFINITY
+  let right = Number.NEGATIVE_INFINITY
+  let bottom = Number.NEGATIVE_INFINITY
+
+  const include = (rect: DOMRect) => {
+    if (rect.width <= 0 || rect.height <= 0) {
+      return
+    }
+
+    left = Math.min(left, rect.left)
+    top = Math.min(top, rect.top)
+    right = Math.max(right, rect.right)
+    bottom = Math.max(bottom, rect.bottom)
+  }
+
+  include(root.getBoundingClientRect())
+  for (const node of root.querySelectorAll('*')) {
+    include(node.getBoundingClientRect())
+  }
+
+  if (!Number.isFinite(left)) {
+    return null
+  }
+
+  return { left, top, right, bottom }
+}
+
+function isPointInRect(x: number, y: number, rect: ClientRectBox): boolean {
+  return x >= rect.left && y >= rect.top && x <= rect.right && y <= rect.bottom
+}
 
 const defaultState: ControlsOverlayState = {
   hasActiveMedia: false,
@@ -50,6 +97,7 @@ function ControlsOverlay() {
   const [controlsVisible, setControlsVisible] = useState(true)
   const [recordingNowMs, setRecordingNowMs] = useState(() => Date.now())
   const hideTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const hideGenerationRef = useRef(0)
   const interactiveRef = useRef(false)
 
   const showControls = useCallback(() => {
@@ -65,12 +113,27 @@ function ControlsOverlay() {
   }, [])
 
   const restartHideTimer = useCallback(() => {
+    hideGenerationRef.current += 1
+    const generation = hideGenerationRef.current
+
     if (hideTimerRef.current) {
       clearTimeout(hideTimerRef.current)
     }
 
     hideTimerRef.current = setTimeout(() => {
-      hideControls()
+      void window.electronAPI?.getControlsOverlayCursor?.().then((cursor) => {
+        if (generation !== hideGenerationRef.current) {
+          return
+        }
+
+        const rect = controlsHitRect()
+        if (cursor && rect && isPointInRect(cursor.x, cursor.y, rect)) {
+          restartHideTimer()
+          return
+        }
+
+        hideControls()
+      })
     }, HIDE_DELAY_MS)
   }, [hideControls])
 
@@ -150,16 +213,33 @@ function ControlsOverlay() {
       return
     }
 
+    let last: { x: number; y: number } | null = null
+
     const pollCursor = () => {
-      void window.electronAPI?.isCursorOverControlsOverlay?.().then((over) => {
-        if (over) {
+      void window.electronAPI?.getControlsOverlayCursor?.().then((cursor) => {
+        if (!cursor) {
+          last = null
+          return
+        }
+
+        const previous = last
+        last = { x: cursor.x, y: cursor.y }
+
+        if (!cursor.inside || !previous) {
+          return
+        }
+
+        const moved =
+          Math.abs(cursor.x - previous.x) + Math.abs(cursor.y - previous.y) >=
+          CURSOR_MOVE_THRESHOLD_PX
+
+        if (moved) {
           revealControls()
         }
       })
     }
 
-    pollCursor()
-    const pollId = window.setInterval(pollCursor, 120)
+    const pollId = window.setInterval(pollCursor, CURSOR_POLL_MS)
 
     return () => {
       window.clearInterval(pollId)

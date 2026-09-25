@@ -142,7 +142,11 @@ declare global {
       hideControlsOverlay: () => void
       setControlsOverlayInteractive: (interactive: boolean) => void
       raiseControlsOverlay: () => void
-      isCursorOverControlsOverlay: () => Promise<boolean>
+      getControlsOverlayCursor: () => Promise<{
+        x: number
+        y: number
+        inside: boolean
+      } | null>
       sendControlsState: (state: ControlsOverlayState) => void
       onControlsState: (
         callback: (state: ControlsOverlayState) => void,

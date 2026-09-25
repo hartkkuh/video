@@ -879,23 +879,24 @@ ipcMain.on('controls:set-bounds', (_event, bounds: ControlsOverlayBounds) => {
   vlcPlayer?.raiseControlsOverlay()
 })
 
-function isCursorOverControlsWindow(): boolean {
+function getControlsOverlayCursor(): { x: number; y: number; inside: boolean } | null {
   if (!controlsWindow || controlsWindow.isDestroyed() || !controlsWindow.isVisible()) {
-    return false
+    return null
   }
 
   const cursor = screen.getCursorScreenPoint()
   const bounds = controlsWindow.getBounds()
+  const x = cursor.x - bounds.x
+  const y = cursor.y - bounds.y
 
-  return (
-    cursor.x >= bounds.x &&
-    cursor.x <= bounds.x + bounds.width &&
-    cursor.y >= bounds.y &&
-    cursor.y <= bounds.y + bounds.height
-  )
+  return {
+    x,
+    y,
+    inside: x >= 0 && y >= 0 && x <= bounds.width && y <= bounds.height,
+  }
 }
 
-ipcMain.handle('controls:cursor-over', () => isCursorOverControlsWindow())
+ipcMain.handle('controls:cursor-point', () => getControlsOverlayCursor())
 
 ipcMain.on('controls:raise', () => {
   vlcPlayer?.raiseControlsOverlay()

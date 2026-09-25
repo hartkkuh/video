@@ -154,8 +154,12 @@ contextBridge.exposeInMainWorld('electronAPI', {
   raiseControlsOverlay: () => {
     ipcRenderer.send('controls:raise')
   },
-  isCursorOverControlsOverlay: () =>
-    ipcRenderer.invoke('controls:cursor-over') as Promise<boolean>,
+  getControlsOverlayCursor: () =>
+    ipcRenderer.invoke('controls:cursor-point') as Promise<{
+      x: number
+      y: number
+      inside: boolean
+    } | null>,
   sendControlsState: (state: unknown) => {
     ipcRenderer.send('controls:state', state)
   },
