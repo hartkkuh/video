@@ -15,9 +15,11 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  release:
+  build:
     runs-on: windows-latest
     timeout-minutes: 90
+    outputs:
+      version: ${{ steps.version.outputs.version }}
 
     steps:
       - name: Checkout
@@ -48,13 +50,54 @@ jobs:
           CSC_IDENTITY_AUTO_DISCOVERY: 'false'
         run: npm run dist
 
+      - name: Upload release files
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-files
+          path: |
+            release/*.exe
+            release/*.blockmap
+            release/latest.yml
+          if-no-files-found: error
+
+      - name: Upload installer artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: FMP-Video-Player-Setup
+          path: release/*.exe
+          if-no-files-found: error
+
+  publish:
+    name: Release to ${{ matrix.target }}
+    needs: build
+    runs-on: windows-latest
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - target: hartkkuh/video
+            use_release_token: false
+          - target: hartkkuh/FMP-Media-Player
+            use_release_token: true
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Download release files
+        uses: actions/download-artifact@v4
+        with:
+          name: release-files
+          path: release
+
       - name: Create or update GitHub Release
         uses: softprops/action-gh-release@v2
         with:
-          repository: hartkkuh/FMP-Media-Player
-          token: ${{ secrets.RELEASE_TOKEN }}
-          tag_name: v${{ steps.version.outputs.version }}
-          name: FMP Video Player ${{ steps.version.outputs.version }}
+          repository: ${{ matrix.target }}
+          token: ${{ matrix.use_release_token && secrets.RELEASE_TOKEN || github.token }}
+          tag_name: v${{ needs.build.outputs.version }}
+          name: FMP Video Player ${{ needs.build.outputs.version }}
           body_path: body.txt
           draft: false
           prerelease: false
@@ -65,10 +108,3 @@ jobs:
             release/FMP Video Player-Setup-*.exe
             release/*.blockmap
             release/latest.yml
-
-      - name: Upload installer artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: FMP-Video-Player-Setup
-          path: release/*.exe
-          if-no-files-found: error
