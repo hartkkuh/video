@@ -155,6 +155,7 @@ export class MediaProbeService {
   private libvlc_media_player_set_hwnd: (player: unknown, hwnd: bigint) => void
   private libvlc_media_player_play: (player: unknown) => number
   private libvlc_media_player_stop: (player: unknown) => void
+  private libvlc_media_player_set_pause: (player: unknown, doPause: number) => void
   private libvlc_media_player_set_time: (player: unknown, timeMs: number) => void
   private libvlc_media_player_get_length: (player: unknown) => number
   private libvlc_media_player_get_state: (player: unknown) => number
@@ -166,6 +167,13 @@ export class MediaProbeService {
     width: number,
     height: number,
   ) => number
+  private scrubFilePath: string | null = null
+  private scrubPlayer: unknown = null
+  private scrubMedia: unknown = null
+  private scrubWindow: BrowserWindow | null = null
+  private scrubReady = false
+  private scrubChain: Promise<void> = Promise.resolve()
+  private scrubCache = new Map<string, Map<number, MediaThumbnail>>()
 
   constructor() {
     const libvlcDir = resolveLibvlcDir()
@@ -199,6 +207,10 @@ export class MediaProbeService {
     this.libvlc_media_player_set_hwnd = lib.func('libvlc_media_player_set_hwnd', 'void', ['void *', 'void *'])
     this.libvlc_media_player_play = lib.func('libvlc_media_player_play', 'int', ['void *'])
     this.libvlc_media_player_stop = lib.func('libvlc_media_player_stop', 'void', ['void *'])
+    this.libvlc_media_player_set_pause = lib.func('libvlc_media_player_set_pause', 'void', [
+      'void *',
+      'int',
+    ])
     this.libvlc_media_player_set_time = lib.func('libvlc_media_player_set_time', 'void', ['void *', 'int64'])
     this.libvlc_media_player_get_length = lib.func('libvlc_media_player_get_length', 'int64', ['void *'])
     this.libvlc_media_player_get_state = lib.func('libvlc_media_player_get_state', 'int', ['void *'])
@@ -428,11 +440,202 @@ export class MediaProbeService {
     }
   }
 
+  /**
+   * Frame for the timeline scrubber. One off-screen player stays open for the
+   * current file, and each whole second is cached so dragging stays responsive.
+   */
+  scrubThumbnail(filePath: string, timeMs: number): Promise<MediaThumbnail | null> {
+    if (typeof filePath !== 'string' || filePath.length === 0) {
+      return Promise.resolve(null)
+    }
+
+    const second = Math.max(0, Math.round(timeMs / 1000))
+    const cached = this.scrubCache.get(filePath)?.get(second)
+    if (cached) {
+      return Promise.resolve(cached)
+    }
+
+    const run = this.scrubChain.then(() => this.captureScrubFrame(filePath, second))
+    this.scrubChain = run.then(
+      () => undefined,
+      () => undefined,
+    )
+    return run
+  }
+
   destroy() {
+    this.closeScrubSession()
     if (this.instance) {
       this.libvlc_release(this.instance)
       this.instance = null
     }
+  }
+
+  private async captureScrubFrame(filePath: string, second: number): Promise<MediaThumbnail | null> {
+    const cached = this.scrubCache.get(filePath)?.get(second)
+    if (cached) {
+      return cached
+    }
+
+    const ready = await this.ensureScrubSession(filePath)
+    if (!ready || !this.scrubPlayer) {
+      return null
+    }
+
+    const timeMs = second * 1000
+    this.libvlc_media_player_set_pause(this.scrubPlayer, 0)
+    if (timeMs > 0) {
+      this.libvlc_media_player_set_time(this.scrubPlayer, timeMs)
+    }
+    await delay(240)
+
+    const image = await this.snapshotScrubPlayer(filePath)
+    this.libvlc_media_player_set_pause(this.scrubPlayer, 1)
+    if (!image) {
+      return null
+    }
+
+    let frames = this.scrubCache.get(filePath)
+    if (!frames) {
+      frames = new Map()
+      this.scrubCache.set(filePath, frames)
+    }
+    frames.set(second, image)
+    return image
+  }
+
+  private async ensureScrubSession(filePath: string): Promise<boolean> {
+    if (this.scrubReady && this.scrubFilePath === filePath && this.scrubPlayer && this.scrubWindow) {
+      return true
+    }
+
+    this.closeScrubSession()
+
+    const media = this.libvlc_media_new_path(this.instance, filePath)
+    if (!media) {
+      return false
+    }
+
+    this.libvlc_media_add_option(media, ':no-audio')
+    this.libvlc_media_add_option(media, ':no-sub-autodetect-file')
+    this.libvlc_media_add_option(media, ':avcodec-hw=none')
+
+    const player = this.libvlc_media_player_new(this.instance)
+    const previewWindow = new BrowserWindow({
+      show: false,
+      width: 320,
+      height: 180,
+      x: -32000,
+      y: -32000,
+      frame: false,
+      skipTaskbar: true,
+      focusable: false,
+      hasShadow: false,
+      backgroundColor: '#000000',
+      webPreferences: {
+        nodeIntegration: false,
+        contextIsolation: true,
+      },
+    })
+    previewWindow.setIgnoreMouseEvents(true)
+
+    this.scrubFilePath = filePath
+    this.scrubMedia = media
+    this.scrubPlayer = player
+    this.scrubWindow = previewWindow
+
+    try {
+      this.libvlc_media_player_set_media(player, media)
+      this.libvlc_media_player_set_hwnd(player, hwndFromBuffer(previewWindow.getNativeWindowHandle()))
+      previewWindow.showInactive()
+      this.libvlc_audio_set_volume(player, 0)
+
+      if (this.libvlc_media_player_play(player) !== 0) {
+        this.closeScrubSession()
+        return false
+      }
+
+      const started = await this.waitForPlaying(player, 5000)
+      if (!started) {
+        this.closeScrubSession()
+        return false
+      }
+
+      this.scrubReady = true
+      return true
+    } catch (error) {
+      console.warn('media-probe: scrub preview failed to start:', error)
+      this.closeScrubSession()
+      return false
+    }
+  }
+
+  private async snapshotScrubPlayer(filePath: string): Promise<MediaThumbnail | null> {
+    if (!this.scrubPlayer) {
+      return null
+    }
+
+    const dir = path.join(app.getPath('temp'), 'fmp-media-player', 'scrub')
+    await fsPromises.mkdir(dir, { recursive: true })
+    const outPath = path.join(dir, `scrub-${Date.now()}-${Math.random().toString(36).slice(2)}.png`)
+
+    let snapshotResult = this.libvlc_video_take_snapshot(this.scrubPlayer, 0, outPath, 320, 0)
+    if (snapshotResult !== 0) {
+      await delay(280)
+      snapshotResult = this.libvlc_video_take_snapshot(this.scrubPlayer, 0, outPath, 320, 0)
+    }
+
+    if (snapshotResult !== 0) {
+      await fsPromises.rm(outPath, { force: true })
+      return null
+    }
+
+    const image = nativeImage.createFromPath(outPath)
+    await fsPromises.rm(outPath, { force: true })
+    if (image.isEmpty()) {
+      return null
+    }
+
+    const size = image.getSize()
+    return {
+      filePath,
+      dataUrl: image.toDataURL(),
+      width: size.width,
+      height: size.height,
+    }
+  }
+
+  private closeScrubSession() {
+    this.scrubReady = false
+    this.scrubFilePath = null
+
+    if (this.scrubPlayer) {
+      try {
+        this.libvlc_media_player_stop(this.scrubPlayer)
+      } catch {
+        // ignore
+      }
+      try {
+        this.libvlc_media_player_release(this.scrubPlayer)
+      } catch {
+        // ignore
+      }
+      this.scrubPlayer = null
+    }
+
+    if (this.scrubMedia) {
+      try {
+        this.libvlc_media_release(this.scrubMedia)
+      } catch {
+        // ignore
+      }
+      this.scrubMedia = null
+    }
+
+    if (this.scrubWindow && !this.scrubWindow.isDestroyed()) {
+      this.scrubWindow.destroy()
+    }
+    this.scrubWindow = null
   }
 
   private async parseMedia(media: unknown): Promise<boolean> {

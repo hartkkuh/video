@@ -70,6 +70,7 @@ const defaultState: ControlsOverlayState = {
   recordingBarVisible: false,
   recordingActive: false,
   recordingStartedAt: null,
+  scrubVideoPath: null,
 }
 
 function formatRecordingElapsed(startedAt: number | null, nowMs: number): string {
@@ -304,6 +305,7 @@ function ControlsOverlay() {
         onRecordingStart={() => sendAction({ type: 'recording-start' })}
         onRecordingStop={() => sendAction({ type: 'recording-stop' })}
         onRecordingClose={() => sendAction({ type: 'recording-close' })}
+        scrubVideoPath={state.scrubVideoPath}
       />
     </div>
   )

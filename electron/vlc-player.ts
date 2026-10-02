@@ -1,11 +1,21 @@
+import fs from 'node:fs'
 import fsPromises from 'node:fs/promises'
 import { createRequire } from 'node:module'
 import path from 'node:path'
+import { pathToFileURL } from 'node:url'
 import { app, BrowserWindow, screen } from 'electron'
 import { resolveLibvlcDir } from './libvlc-path.js'
 
 const require = createRequire(import.meta.url)
 const koffi = require('koffi')
+
+const TrackDescription = koffi.struct('libvlc_track_description_t', {
+	i_id: 'int',
+	psz_name: 'str',
+	p_next: 'void *',
+})
+
+const LIBVLC_SLAVE_SUBTITLE = 0
 
 export type VlcPlayerState = {
 	playing: boolean
@@ -34,7 +44,7 @@ import {
 } from './vlc-effects.js'
 import { getWin32User32, hwndFromBuffer } from './win32-api.js'
 import { Win32VideoHost } from './win32-video-host.js'
-import { VLC_VIDEO_EXTENSIONS } from '../shared/vlc-media-extensions.js'
+import { VLC_SUBTITLE_EXTENSIONS, VLC_VIDEO_EXTENSIONS } from '../shared/vlc-media-extensions.js'
 
 export type { VlcAudioEffects, VlcVideoEffects } from './vlc-effects.js'
 
@@ -106,6 +116,43 @@ function isVideoSourcePath(filePath: string): boolean {
 	return VIDEO_EXTENSION_SET.has(path.extname(filePath).toLowerCase())
 }
 
+const SIDECAR_SUBTITLE_EXTENSIONS = [
+	'.srt',
+	'.ass',
+	'.ssa',
+	'.vtt',
+	'.idx',
+	...VLC_SUBTITLE_EXTENSIONS.filter(
+		(extension) => !['.srt', '.ass', '.ssa', '.vtt', '.idx'].includes(extension),
+	),
+]
+
+/** `movie.mp4` → `movie.srt` (or another subtitle extension) in the same folder. */
+function findSidecarSubtitle(mediaPath: string): string | null {
+	if (!isVideoSourcePath(mediaPath)) {
+		return null
+	}
+
+	const directory = path.dirname(mediaPath)
+	const baseName = path.basename(mediaPath, path.extname(mediaPath))
+	let names: string[]
+	try {
+		names = fs.readdirSync(directory)
+	} catch {
+		return null
+	}
+
+	const byLowerName = new Map(names.map((name) => [name.toLowerCase(), name]))
+	for (const extension of SIDECAR_SUBTITLE_EXTENSIONS) {
+		const match = byLowerName.get(`${baseName}${extension}`.toLowerCase())
+		if (match) {
+			return path.join(directory, match)
+		}
+	}
+
+	return null
+}
+
 function selectSoutMux(destPath: string): string | null {
 	const ext = path.extname(destPath).toLowerCase()
 	return SOUT_MUX_BY_EXTENSION[ext] ?? null
@@ -170,6 +217,8 @@ export class VlcPlayerService {
 	private lastViewport: ViewportBounds | null = null
 	private mediaLoaded = false
 	private currentFilePath: string | null = null
+	private sidecarSubtitlePath: string | null = null
+	private subtitleSelectTimers: ReturnType<typeof setTimeout>[] = []
 	private pendingAudioEffects: VlcAudioEffects | null = null
 	private pendingVolume = 1
 	private pendingVolumeMuted = false
@@ -193,6 +242,15 @@ export class VlcPlayerService {
 	private libvlc_errmsg: () => string | null
 	private libvlc_media_new_path: (instance: unknown, path: string) => unknown
 	private libvlc_media_add_option: (media: unknown, option: string) => void
+	private libvlc_media_slaves_add: (
+		media: unknown,
+		type: number,
+		priority: number,
+		uri: string,
+	) => number
+	private libvlc_video_get_spu_description: (player: unknown) => unknown
+	private libvlc_video_set_spu: (player: unknown, spuId: number) => number
+	private libvlc_track_description_list_release: (list: unknown) => void
 	private libvlc_media_release: (media: unknown) => void
 	private libvlc_media_player_new: (instance: unknown) => unknown
 	private libvlc_media_player_release: (player: unknown) => void
@@ -237,6 +295,17 @@ export class VlcPlayerService {
 		this.libvlc_errmsg = lib.func('libvlc_errmsg', 'str', [])
 		this.libvlc_media_new_path = lib.func('libvlc_media_new_path', 'void *', ['void *', 'str'])
 		this.libvlc_media_add_option = lib.func('libvlc_media_add_option', 'void', ['void *', 'str'])
+		this.libvlc_media_slaves_add = lib.func('libvlc_media_slaves_add', 'int', [
+			'void *',
+			'int',
+			'uint',
+			'str',
+		])
+		this.libvlc_video_get_spu_description = lib.func('libvlc_video_get_spu_description', 'void *', ['void *'])
+		this.libvlc_video_set_spu = lib.func('libvlc_video_set_spu', 'int', ['void *', 'int'])
+		this.libvlc_track_description_list_release = lib.func('libvlc_track_description_list_release', 'void', [
+			'void *',
+		])
 		this.libvlc_media_release = lib.func('libvlc_media_release', 'void', ['void *'])
 		this.libvlc_media_player_new = lib.func('libvlc_media_player_new', 'void *', ['void *'])
 		this.libvlc_media_player_release = lib.func('libvlc_media_player_release', 'void', ['void *'])
@@ -412,6 +481,8 @@ export class VlcPlayerService {
 		}
 
 		this.endedNotified = false
+		this.clearSubtitleSelection()
+		this.sidecarSubtitlePath = null
 		this.media = this.createMedia(filePath, this.activeVideoEffects)
 
 		if (!this.media) {
@@ -443,6 +514,7 @@ export class VlcPlayerService {
 		this.bindVideoDrawable()
 		this.prepareVideoOutput()
 		this.libvlc_media_player_play(this.mediaPlayer)
+		this.scheduleSidecarSubtitleSelection()
 		this.claimEmbeddedVideo()
 		this.refreshEffectsAfterPipeline()
 		this.syncRecordingTransport('play')
@@ -699,6 +771,7 @@ export class VlcPlayerService {
 	}
 
 	destroy() {
+		this.clearSubtitleSelection()
 		this.stop()
 		this.stopEmbedWatch()
 		this.hideVideoWindow()
@@ -866,7 +939,91 @@ export class VlcPlayerService {
 			this.libvlc_media_add_option(media, option)
 		}
 
+		const subtitlePath = findSidecarSubtitle(filePath)
+		this.sidecarSubtitlePath = subtitlePath
+		if (subtitlePath) {
+			// A `:sub-file=C:/...` option is split on the drive-letter colon, so the
+			// subtitle never reaches libVLC. Attach it as a slave URI instead.
+			const added = this.libvlc_media_slaves_add(
+				media,
+				LIBVLC_SLAVE_SUBTITLE,
+				4,
+				pathToFileURL(subtitlePath).href,
+			)
+			if (added === 0) {
+				this.libvlc_media_add_option(media, ':no-sub-autodetect-file')
+			}
+		}
+
 		return media
+	}
+
+	private clearSubtitleSelection() {
+		for (const timer of this.subtitleSelectTimers) {
+			clearTimeout(timer)
+		}
+		this.subtitleSelectTimers = []
+	}
+
+	private scheduleSidecarSubtitleSelection() {
+		this.clearSubtitleSelection()
+		if (!this.sidecarSubtitlePath) {
+			return
+		}
+
+		for (const delay of [250, 800]) {
+			this.subtitleSelectTimers.push(
+				setTimeout(() => this.selectSidecarSubtitle(false), delay),
+			)
+		}
+		this.subtitleSelectTimers.push(
+			setTimeout(() => this.selectSidecarSubtitle(true), 1600),
+		)
+	}
+
+	private selectSidecarSubtitle(allowFallback: boolean) {
+		const subtitlePath = this.sidecarSubtitlePath
+		if (!subtitlePath || !this.mediaPlayer) {
+			return
+		}
+
+		const head = this.libvlc_video_get_spu_description(this.mediaPlayer)
+		if (!head) {
+			return
+		}
+
+		const wanted = path
+			.basename(subtitlePath, path.extname(subtitlePath))
+			.toLowerCase()
+		let cursor: unknown = head
+		let matchId = -1
+		let lastId = -1
+
+		for (let guard = 0; cursor && guard < 32; guard += 1) {
+			const item = koffi.decode(cursor, TrackDescription) as {
+				i_id: number
+				psz_name: string | null
+				p_next: unknown
+			}
+			if (item.i_id >= 0) {
+				lastId = item.i_id
+				const name = String(item.psz_name ?? '').toLowerCase()
+				if (name.includes(wanted)) {
+					matchId = item.i_id
+				}
+			}
+			cursor = item.p_next || null
+		}
+
+		this.libvlc_track_description_list_release(head)
+
+		const chosen = matchId >= 0 ? matchId : allowFallback ? lastId : -1
+		if (chosen < 0) {
+			return
+		}
+
+		this.libvlc_video_set_spu(this.mediaPlayer, chosen)
+		this.clearSubtitleSelection()
 	}
 
 	private reloadMediaPreservePosition() {
@@ -878,6 +1035,7 @@ export class VlcPlayerService {
 		const state = this.libvlc_media_player_get_state(this.mediaPlayer)
 		const shouldResume = state === LIBVLC_STATE_PLAYING || state === LIBVLC_STATE_PAUSED
 
+		this.clearSubtitleSelection()
 		this.libvlc_media_player_stop(this.mediaPlayer)
 
 		if (this.media) {
@@ -902,6 +1060,7 @@ export class VlcPlayerService {
 			this.bindVideoDrawable()
 			this.prepareVideoOutput()
 			this.libvlc_media_player_play(this.mediaPlayer)
+			this.scheduleSidecarSubtitleSelection()
 			this.claimEmbeddedVideo()
 			this.refreshEffectsAfterPipeline()
 			return

@@ -94,6 +94,8 @@ contextBridge.exposeInMainWorld('electronAPI', {
     ipcRenderer.invoke('media-probe:tracks', filePath) as Promise<MediaTrackInfo[]>,
   mediaGetThumbnail: (filePath: string, options?: MediaThumbnailOptions) =>
     ipcRenderer.invoke('media-probe:thumbnail', filePath, options ?? null) as Promise<MediaThumbnail | null>,
+  mediaGetScrubThumbnail: (filePath: string, timeMs: number) =>
+    ipcRenderer.invoke('media-probe:scrub-thumbnail', filePath, timeMs) as Promise<MediaThumbnail | null>,
   vlcSetVideoVisible: (visible: boolean) =>
     ipcRenderer.invoke('vlc:set-video-visible', visible) as Promise<void>,
   vlcSuspendVideoOverlay: () =>

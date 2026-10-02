@@ -462,6 +462,15 @@ function registerMediaProbeHandlers() {
       }
     },
   )
+
+  ipcMain.handle('media-probe:scrub-thumbnail', async (_event, filePath: string, timeMs: number) => {
+    try {
+      return await getMediaProbeService().scrubThumbnail(filePath, timeMs)
+    } catch (error) {
+      console.warn('media-probe:scrub-thumbnail failed:', error)
+      return null
+    }
+  })
 }
 
 function resolveAppIcon() {

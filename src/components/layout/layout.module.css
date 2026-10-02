@@ -38,6 +38,6 @@
 }
 
 :global(.app-shell).contentScrollable > * {
-  flex: 0 0 auto;
-  min-height: auto;
+  flex: 1 0 auto;
+  min-height: 100%;
 }

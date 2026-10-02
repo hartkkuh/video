@@ -319,6 +319,7 @@ html[data-theme='light'] .recordingBar {
 }
 
 .progressRow {
+	position: relative;
 	display: grid;
 	grid-template-columns: auto minmax(0, 1fr) auto;
 	gap: 12px;
@@ -326,6 +327,42 @@ html[data-theme='light'] .recordingBar {
 	max-width: 760px;
 	width: 100%;
 	margin: 0 auto;
+}
+
+.scrubPreview {
+	position: absolute;
+	bottom: calc(100% + 10px);
+	z-index: 6;
+	width: 168px;
+	transform: translateX(-50%);
+	pointer-events: none;
+	border-radius: 10px;
+	overflow: hidden;
+	background: rgba(8, 12, 20, 0.94);
+	border: 1px solid rgba(255, 255, 255, 0.16);
+	box-shadow: 0 12px 28px rgba(0, 0, 0, 0.45);
+}
+
+.scrubPreviewBelow {
+	bottom: auto;
+	top: calc(100% + 10px);
+}
+
+.scrubPreviewImage,
+.scrubPreviewPending {
+	display: block;
+	width: 168px;
+	height: 94px;
+	object-fit: cover;
+	background: #111820;
+}
+
+.scrubPreviewTime {
+	padding: 4px 6px 6px;
+	text-align: center;
+	font-size: 0.78rem;
+	font-variant-numeric: tabular-nums;
+	color: #f4f7fb;
 }
 
 .progressBar {

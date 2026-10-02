@@ -702,6 +702,7 @@ export default function Player() {
     recordingBarVisible,
     recordingActive,
     recordingStartedAt,
+    scrubVideoPath: currentMediaKind === 'video' ? currentFilePath : null,
   }
 
   useEffect(() => {
@@ -737,6 +738,8 @@ export default function Player() {
     recordingBarVisible,
     recordingActive,
     recordingStartedAt,
+    currentMediaKind,
+    currentFilePath,
     t,
   ])
 

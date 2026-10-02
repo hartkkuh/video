@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState, type RefObject } from 'react'
+import { useCallback, useEffect, useRef, useState, type PointerEvent as ReactPointerEvent, type RefObject } from 'react'
 import { useAppTranslation } from '../../i18n/useAppTranslation'
 import { useAppMemory } from '../../memory/memory-context'
 import { useAppSettings } from '../../settings/settings-context'
@@ -40,6 +40,8 @@ type PlayerControlsProps = {
   onRecordingStart?: () => void
   onRecordingStop?: () => void
   onRecordingClose?: () => void
+  /** When set, hovering the timeline shows that second's video frame. */
+  scrubVideoPath?: string | null
 }
 
 function formatTime(value: number) {
@@ -225,6 +227,7 @@ export default function PlayerControls({
   onRecordingStart,
   onRecordingStop,
   onRecordingClose,
+  scrubVideoPath = null,
 }: PlayerControlsProps) {
   const { t } = useAppTranslation()
   const { settings } = useAppSettings()
@@ -369,6 +372,116 @@ export default function PlayerControls({
     document.addEventListener('fullscreenchange', handleFullscreenChange)
     return () => document.removeEventListener('fullscreenchange', handleFullscreenChange)
   }, [fullscreenStageRef])
+
+  const progressRowRef = useRef<HTMLDivElement | null>(null)
+  const scrubCacheRef = useRef(new Map<string, string>())
+  const scrubWantedRef = useRef<number | null>(null)
+  const scrubBusyRef = useRef(false)
+  const scrubPathRef = useRef(scrubVideoPath)
+  const [scrubPreview, setScrubPreview] = useState<{
+    left: number
+    time: number
+    imageUrl: string | null
+  } | null>(null)
+
+  scrubPathRef.current = scrubVideoPath
+
+  useEffect(() => {
+    scrubCacheRef.current.clear()
+    scrubWantedRef.current = null
+    setScrubPreview(null)
+  }, [scrubVideoPath])
+
+  const requestScrubFrame = useCallback((second: number) => {
+    const filePath = scrubPathRef.current
+    if (!filePath) {
+      return
+    }
+
+    const cacheKey = `${filePath}:${second}`
+    const cached = scrubCacheRef.current.get(cacheKey)
+    if (cached) {
+      setScrubPreview((current) =>
+        current && Math.round(current.time) === second ? { ...current, imageUrl: cached } : current,
+      )
+      return
+    }
+
+    scrubWantedRef.current = second
+    if (scrubBusyRef.current) {
+      return
+    }
+
+    scrubBusyRef.current = true
+    void (async () => {
+      try {
+        while (scrubWantedRef.current !== null) {
+          const target = scrubWantedRef.current
+          scrubWantedRef.current = null
+          const pathNow = scrubPathRef.current
+          if (!pathNow) {
+            break
+          }
+
+          const key = `${pathNow}:${target}`
+          const hit = scrubCacheRef.current.get(key)
+          if (hit) {
+            setScrubPreview((current) =>
+              current && Math.round(current.time) === target ? { ...current, imageUrl: hit } : current,
+            )
+            continue
+          }
+
+          const result = await window.electronAPI?.mediaGetScrubThumbnail?.(pathNow, target * 1000)
+          if (!result?.dataUrl || scrubPathRef.current !== pathNow) {
+            continue
+          }
+
+          scrubCacheRef.current.set(key, result.dataUrl)
+          setScrubPreview((current) =>
+            current && Math.round(current.time) === target
+              ? { ...current, imageUrl: result.dataUrl }
+              : current,
+          )
+        }
+      } finally {
+        scrubBusyRef.current = false
+        if (scrubWantedRef.current !== null) {
+          requestScrubFrame(scrubWantedRef.current)
+        }
+      }
+    })()
+  }, [])
+
+  const updateScrubPreview = useCallback(
+    (event: ReactPointerEvent<HTMLInputElement>) => {
+      if (!scrubVideoPath || duration <= 0) {
+        return
+      }
+
+      const row = progressRowRef.current
+      const inputRect = event.currentTarget.getBoundingClientRect()
+      const rowRect = row?.getBoundingClientRect()
+      if (!rowRect || inputRect.width <= 0) {
+        return
+      }
+
+      let ratio = (event.clientX - inputRect.left) / inputRect.width
+      if (getComputedStyle(event.currentTarget).direction === 'rtl') {
+        ratio = 1 - ratio
+      }
+      ratio = Math.min(1, Math.max(0, ratio))
+
+      const time = ratio * duration
+      const half = 84
+      const left = Math.min(rowRect.width - half, Math.max(half, event.clientX - rowRect.left))
+      const second = Math.round(time)
+      const imageUrl = scrubCacheRef.current.get(`${scrubVideoPath}:${second}`) ?? null
+      setScrubPreview({ left, time, imageUrl })
+      requestScrubFrame(second)
+    },
+    [duration, requestScrubFrame, scrubVideoPath],
+  )
 
   const togglePlayback = useCallback(() => {
     if (!hasActiveMedia) {
@@ -604,7 +717,20 @@ export default function PlayerControls({
           </div>
         ) : null}
 
-        <div className={styles.progressRow}>
+        <div className={styles.progressRow} ref={progressRowRef}>
+          {scrubPreview && scrubVideoPath ? (
+            <div
+              className={`${styles.scrubPreview} ${controlsPosition === 'top' ? styles.scrubPreviewBelow : ''}`}
+              style={{ left: scrubPreview.left }}
+            >
+              {scrubPreview.imageUrl ? (
+                <img className={styles.scrubPreviewImage} src={scrubPreview.imageUrl} alt="" />
+              ) : (
+                <div className={styles.scrubPreviewPending} />
+              )}
+              <div className={styles.scrubPreviewTime}>{formatTime(scrubPreview.time)}</div>
+            </div>
+          ) : null}
           <div className={styles.timeLabel}>{formatTime(currentTime)}</div>
           <input
             type="range"
@@ -614,6 +740,9 @@ export default function PlayerControls({
             step={0.1}
             value={duration > 0 ? Math.min(currentTime, duration) : 0}
             onChange={(event) => seekTo(Number(event.target.value))}
+            onPointerMove={updateScrubPreview}
+            onPointerDown={updateScrubPreview}
+            onPointerLeave={() => setScrubPreview(null)}
             disabled={!hasPlayableFiles || duration <= 0}
             aria-label={labels.seek}
           />

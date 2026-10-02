@@ -48,6 +48,8 @@ export type ControlsOverlayState = {
   recordingBarVisible: boolean
   recordingActive: boolean
   recordingStartedAt: number | null
+  /** Video path used for the timeline frame preview. Absent for audio. */
+  scrubVideoPath?: string | null
 }
 
 export type ControlsOverlayAction =
@@ -122,6 +124,7 @@ declare global {
         filePath: string,
         options?: MediaThumbnailOptions,
       ) => Promise<MediaThumbnail | null>
+      mediaGetScrubThumbnail: (filePath: string, timeMs: number) => Promise<MediaThumbnail | null>
       vlcSetVideoVisible: (visible: boolean) => Promise<void>
       vlcSuspendVideoOverlay: () => Promise<void>
       vlcResumeVideoOverlay: () => Promise<void>
