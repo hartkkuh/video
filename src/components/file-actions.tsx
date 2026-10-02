@@ -11,6 +11,8 @@ type FileActions = {
   openSingle: () => void
   openMultiple: () => void
   openFolder: () => void
+  openRecent: (filePath: string) => void
+  openPlaylist: (filePaths: string[]) => void
 }
 
 type FileActionsContextValue = {

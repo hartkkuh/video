@@ -73,6 +73,20 @@ export type FilesMenuAction =
   | { type: 'single' }
   | { type: 'multiple' }
   | { type: 'folder' }
+  | { type: 'recent'; path: string }
+  | { type: 'playlist'; id: string }
+  | { type: 'playlists' }
+
+export type FilesMenuPlaylistItem = {
+  id: string
+  name: string
+  count: number
+}
+
+export type FilesMenuPanel = {
+  recentFiles: string[]
+  playlists: FilesMenuPlaylistItem[]
+}
 
 export type OverlayMenuItem = {
   id: string
@@ -161,13 +175,18 @@ declare global {
       ) => () => void
       notifyControlsReady: () => void
       onControlsRequestState: (callback: () => void) => () => void
-      showFilesMenu: (bounds: FilesMenuBounds, content?: OverlayMenuContent | null) => void
+      showFilesMenu: (
+        bounds: FilesMenuBounds,
+        content?: OverlayMenuContent | FilesMenuPanel | null,
+      ) => void
       hideFilesMenu: () => void
       sendFilesMenuAction: (action: FilesMenuAction) => void
       sendFilesMenuSelect: (id: string) => void
       sendFilesMenuClose: () => void
       notifyFilesMenuReady: () => void
-      onFilesMenuShow: (callback: (content: OverlayMenuContent | null) => void) => () => void
+      onFilesMenuShow: (
+        callback: (content: OverlayMenuContent | FilesMenuPanel | null) => void,
+      ) => () => void
       onFilesMenuHide: (callback: () => void) => () => void
       onFilesMenuAction: (callback: (action: FilesMenuAction) => void) => () => void
       onFilesMenuSelect: (callback: (id: string) => void) => () => void

@@ -8,9 +8,14 @@ import type { FilesMenuBounds, OverlayMenuContent } from '../../types/electron'
 import styles from './navbar.module.css'
 
 const MENU_WIDTH = 220
+const FILES_MENU_RECENT_WIDTH = 400
 const MENU_PADDING = 16
 const MENU_GAP = 6
 const MENU_ITEM_HEIGHT = 38
+const RECENT_HEADING_HEIGHT = 22
+const RECENT_ROW_HEIGHT = 56
+const RECENT_SECTION_CHROME = 7
+const PLAYLIST_ROW_HEIGHT = 38
 
 type OpenMenu = 'none' | 'files' | 'tools'
 type ExpandedSubmenu = 'none' | 'effects' | 'media'
@@ -29,9 +34,47 @@ function computeMenuBounds(button: HTMLElement, itemCount: number): FilesMenuBou
   const x = isRtl ? rect.left : rect.left + rect.width - MENU_WIDTH
 
   return {
-    x: Math.max(gap, x),
+    x: Math.max(gap, Math.min(x, window.innerWidth - MENU_WIDTH - gap)),
     y,
     width: MENU_WIDTH,
+    height: menuHeight,
+  }
+}
+
+function computeFilesMenuBounds(
+  button: HTMLElement,
+  recentCount: number,
+  playlistCount: number,
+): FilesMenuBounds {
+  const rect = button.getBoundingClientRect()
+  const gap = 10
+  const isRtl = document.documentElement.dir === 'rtl'
+  const width = FILES_MENU_RECENT_WIDTH
+  const rowCount = Math.max(recentCount, 1)
+  const playlistRows = Math.max(playlistCount, 1) + 1
+  let menuHeight = MENU_PADDING + 3 * MENU_ITEM_HEIGHT + 2 * MENU_GAP
+  menuHeight += MENU_GAP + RECENT_SECTION_CHROME + RECENT_HEADING_HEIGHT
+  menuHeight += rowCount * (RECENT_ROW_HEIGHT + MENU_GAP)
+  menuHeight += MENU_GAP + RECENT_SECTION_CHROME + RECENT_HEADING_HEIGHT
+  menuHeight += playlistRows * (PLAYLIST_ROW_HEIGHT + MENU_GAP)
+
+  const maxHeight = Math.max(MENU_ITEM_HEIGHT, window.innerHeight - gap * 2)
+  menuHeight = Math.min(menuHeight, maxHeight)
+
+  let y = rect.bottom + gap
+  if (y + menuHeight > window.innerHeight - gap) {
+    y = Math.max(gap, rect.top - menuHeight - gap)
+  }
+  if (y + menuHeight > window.innerHeight - gap) {
+    y = gap
+  }
+
+  const x = isRtl ? rect.left : rect.left + rect.width - width
+
+  return {
+    x: Math.max(gap, Math.min(x, window.innerWidth - width - gap)),
+    y,
+    width,
     height: menuHeight,
   }
 }
@@ -44,6 +87,7 @@ export default function Navbar() {
   const navigate = useNavigate()
   const isSettingsPage = location.pathname === '/settings'
   const isAboutPage = location.pathname === '/about'
+  const isPlaylistsPage = location.pathname === '/playlists'
 
   const [openMenu, setOpenMenu] = useState<OpenMenu>('none')
   const [expandedSubmenu, setExpandedSubmenu] = useState<ExpandedSubmenu>('none')
@@ -89,6 +133,21 @@ export default function Navbar() {
         case 'folder':
           actions?.openFolder()
           break
+        case 'recent':
+          if (action.path) {
+            actions?.openRecent(action.path)
+          }
+          break
+        case 'playlist': {
+          const playlist = memory.playlists.find((item) => item.id === action.id)
+          if (playlist) {
+            actions?.openPlaylist(playlist.filePaths)
+          }
+          break
+        }
+        case 'playlists':
+          navigate('/playlists')
+          break
       }
     })
     const unsubscribeClose = window.electronAPI?.onFilesMenuClose?.(() => {
@@ -99,7 +158,7 @@ export default function Navbar() {
       unsubscribeAction?.()
       unsubscribeClose?.()
     }
-  }, [actions, closeMenu])
+  }, [actions, closeMenu, memory.playlists, navigate])
 
   // Generic menu selections (Tools menu) are relayed without closing the
   // overlay, so the renderer decides whether to expand, navigate, or close.
@@ -151,6 +210,12 @@ export default function Navbar() {
         if (location.pathname !== '/player') {
           navigate('/player')
         }
+        return
+      }
+
+      if (id === 'shortcuts') {
+        closeMenu()
+        navigate('/shortcuts')
       }
     })
 
@@ -237,10 +302,16 @@ export default function Navbar() {
       )
     }
 
-    items.push({
-      id: 'recording',
-      label: t('navbar.recording'),
-    })
+    items.push(
+      {
+        id: 'recording',
+        label: t('navbar.recording'),
+      },
+      {
+        id: 'shortcuts',
+        label: t('navbar.shortcuts'),
+      },
+    )
 
     return { ariaLabel: t('navbar.tools'), items }
   }, [expandedSubmenu, t])
@@ -250,7 +321,21 @@ export default function Navbar() {
   // window so the two menus never fight over it.
   useLayoutEffect(() => {
     if (openMenu === 'files' && filesButtonRef.current) {
-      window.electronAPI?.showFilesMenu?.(computeMenuBounds(filesButtonRef.current, 3))
+      window.electronAPI?.showFilesMenu?.(
+        computeFilesMenuBounds(
+          filesButtonRef.current,
+          memory.recentFiles.length,
+          memory.playlists.length,
+        ),
+        {
+          recentFiles: memory.recentFiles,
+          playlists: memory.playlists.map((playlist) => ({
+            id: playlist.id,
+            name: playlist.name,
+            count: playlist.filePaths.length,
+          })),
+        },
+      )
       return
     }
 
@@ -264,7 +349,7 @@ export default function Navbar() {
     }
 
     window.electronAPI?.hideFilesMenu?.()
-  }, [openMenu, expandedSubmenu, buildToolsContent])
+  }, [openMenu, expandedSubmenu, buildToolsContent, memory.playlists, memory.recentFiles])
 
   // Reposition while open if the window is resized.
   useEffect(() => {
@@ -274,7 +359,21 @@ export default function Navbar() {
 
     function handleResize() {
       if (openMenu === 'files' && filesButtonRef.current) {
-        window.electronAPI?.showFilesMenu?.(computeMenuBounds(filesButtonRef.current, 3))
+        window.electronAPI?.showFilesMenu?.(
+          computeFilesMenuBounds(
+            filesButtonRef.current,
+            memory.recentFiles.length,
+            memory.playlists.length,
+          ),
+          {
+            recentFiles: memory.recentFiles,
+            playlists: memory.playlists.map((playlist) => ({
+              id: playlist.id,
+              name: playlist.name,
+              count: playlist.filePaths.length,
+            })),
+          },
+        )
       } else if (openMenu === 'tools' && toolsButtonRef.current) {
         const content = buildToolsContent()
         window.electronAPI?.showFilesMenu?.(
@@ -286,7 +385,7 @@ export default function Navbar() {
 
     window.addEventListener('resize', handleResize)
     return () => window.removeEventListener('resize', handleResize)
-  }, [openMenu, expandedSubmenu, buildToolsContent])
+  }, [openMenu, expandedSubmenu, buildToolsContent, memory.playlists, memory.recentFiles])
 
   // Make sure the overlay never lingers if the navbar unmounts.
   useEffect(() => {
@@ -340,6 +439,19 @@ export default function Navbar() {
             {t('navbar.openFiles')}
           </button>
         </div>
+
+        <Link
+          to="/playlists"
+          className={`${styles.settingsButton} ${isPlaylistsPage ? styles.settingsButtonActive : ''}`}
+          onClick={(event) => {
+            if (isPlaylistsPage) {
+              event.preventDefault()
+              navigate('/player')
+            }
+          }}
+        >
+          {t('navbar.playlists')}
+        </Link>
 
         <Link
           to="/about"

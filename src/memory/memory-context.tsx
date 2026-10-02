@@ -16,11 +16,13 @@ import {
   type VideoEffectsState,
   toPersistedMemory,
   directoryFromFilePath,
+  rememberRecentFiles,
 } from './memory'
 
 type MemoryContextValue = {
   memory: AppMemory
   setFilePaths: (filePaths: string[]) => void
+  touchRecentFile: (filePath: string) => void
   setCurrentIndex: (currentIndex: number) => void
   setVolume: (volume: number) => void
   setVolumeMuted: (volumeMuted: boolean) => void
@@ -61,19 +63,44 @@ export function MemoryProvider({
     })
   }, [])
 
+  const setFilePaths = useCallback((filePaths: string[]) => {
+    setMemory((current) => {
+      const lastOpenDirectory =
+        filePaths.length > 0 ? directoryFromFilePath(filePaths[0]) : undefined
+      const nextState = mergeAppMemory(current, {
+        filePaths,
+        currentIndex: 0,
+        ...(filePaths.length > 0
+          ? { recentFiles: rememberRecentFiles(current.recentFiles, filePaths) }
+          : {}),
+        ...(lastOpenDirectory ? { lastOpenDirectory } : {}),
+      })
+      persistMemory(nextState)
+      return nextState
+    })
+  }, [])
+
+  const touchRecentFile = useCallback((filePath: string) => {
+    setMemory((current) => {
+      const recentFiles = rememberRecentFiles(current.recentFiles, [filePath])
+      if (
+        recentFiles.length === current.recentFiles.length &&
+        recentFiles.every((path, index) => path === current.recentFiles[index])
+      ) {
+        return current
+      }
+
+      const nextState = mergeAppMemory(current, { recentFiles })
+      persistMemory(nextState)
+      return nextState
+    })
+  }, [])
+
   const value = useMemo<MemoryContextValue>(
     () => ({
       memory,
-      setFilePaths(filePaths) {
-        const lastOpenDirectory =
-          filePaths.length > 0 ? directoryFromFilePath(filePaths[0]) : undefined
-
-        updateMemory({
-          filePaths,
-          currentIndex: 0,
-          ...(lastOpenDirectory ? { lastOpenDirectory } : {}),
-        })
-      },
+      setFilePaths,
+      touchRecentFile,
       setCurrentIndex(currentIndex) {
         updateMemory({ currentIndex })
       },
@@ -106,7 +133,7 @@ export function MemoryProvider({
       },
       updateMemory,
     }),
-    [memory, updateMemory],
+    [memory, setFilePaths, touchRecentFile, updateMemory],
   )
 
   return <MemoryContext.Provider value={value}>{children}</MemoryContext.Provider>

@@ -22,6 +22,20 @@ export type VideoEffectsState = {
 
 export const EQUALIZER_BAND_COUNT = 10
 
+export const RECENT_FILES_LIMIT = 15
+
+export const PLAYLIST_LIMIT = 40
+
+const PLAYLIST_FILES_LIMIT = 500
+
+const PLAYLIST_NAME_LIMIT = 80
+
+export type SavedPlaylist = {
+  id: string
+  name: string
+  filePaths: string[]
+}
+
 export const defaultAudioEffects: AudioEffectsState = {
   bands: Array.from({ length: EQUALIZER_BAND_COUNT }, () => 0),
   outputGain: 1,
@@ -49,6 +63,8 @@ export type PersistedAppMemory = {
   lastMediaTab: MediaDetailsTab
   audioEffects: AudioEffectsState
   videoEffects: VideoEffectsState
+  recentFiles: string[]
+  playlists: SavedPlaylist[]
 }
 
 export type AppMemory = PersistedAppMemory & {
@@ -67,6 +83,8 @@ export const defaultPersistedAppMemory: PersistedAppMemory = {
   lastMediaTab: 'file',
   audioEffects: defaultAudioEffects,
   videoEffects: defaultVideoEffects,
+  recentFiles: [],
+  playlists: [],
 }
 
 export const defaultAppMemory: AppMemory = {
@@ -93,6 +111,119 @@ function normalizeStringArray(value: unknown): string[] {
   }
 
   return value.filter((item): item is string => typeof item === 'string' && item.length > 0)
+}
+
+function recentFileKey(filePath: string): string {
+  return filePath.replace(/\//g, '\\').toLowerCase()
+}
+
+export function rememberRecentFiles(existing: readonly string[], opened: readonly string[]): string[] {
+  const next: string[] = []
+  const seen = new Set<string>()
+
+  const push = (filePath: string) => {
+    if (next.length >= RECENT_FILES_LIMIT) {
+      return
+    }
+
+    const key = recentFileKey(filePath)
+    if (!key || seen.has(key)) {
+      return
+    }
+
+    seen.add(key)
+    next.push(filePath)
+  }
+
+  for (const filePath of opened) {
+    push(filePath)
+  }
+
+  for (const filePath of existing) {
+    push(filePath)
+  }
+
+  return next
+}
+
+function normalizeRecentFiles(value: unknown): string[] {
+  return rememberRecentFiles([], normalizeStringArray(value))
+}
+
+export function createPlaylistId(): string {
+  return `pl_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`
+}
+
+export function appendPlaylistFiles(existing: readonly string[], added: readonly string[]): string[] {
+  const next: string[] = []
+  const seen = new Set<string>()
+
+  const push = (filePath: string) => {
+    if (next.length >= PLAYLIST_FILES_LIMIT) {
+      return
+    }
+
+    const key = recentFileKey(filePath)
+    if (!key || seen.has(key)) {
+      return
+    }
+
+    seen.add(key)
+    next.push(filePath)
+  }
+
+  for (const filePath of existing) {
+    push(filePath)
+  }
+
+  for (const filePath of added) {
+    push(filePath)
+  }
+
+  return next
+}
+
+function normalizePlaylistName(value: unknown): string {
+  if (typeof value !== 'string') {
+    return ''
+  }
+
+  return value.trim().slice(0, PLAYLIST_NAME_LIMIT)
+}
+
+function normalizePlaylists(value: unknown): SavedPlaylist[] {
+  if (!Array.isArray(value)) {
+    return []
+  }
+
+  const next: SavedPlaylist[] = []
+  const seenIds = new Set<string>()
+
+  for (const item of value) {
+    if (typeof item !== 'object' || item === null) {
+      continue
+    }
+
+    const candidate = item as Record<string, unknown>
+    const id = typeof candidate.id === 'string' ? candidate.id.trim() : ''
+    const name = normalizePlaylistName(candidate.name)
+    if (!id || !name || seenIds.has(id)) {
+      continue
+    }
+
+    seenIds.add(id)
+    next.push({
+      id,
+      name,
+      filePaths: appendPlaylistFiles([], normalizeStringArray(candidate.filePaths)),
+    })
+
+    if (next.length >= PLAYLIST_LIMIT) {
+      break
+    }
+  }
+
+  return next
 }
 
 function normalizeVolume(value: unknown): number {
@@ -204,6 +335,8 @@ export function normalizePersistedMemory(value: unknown): PersistedAppMemory {
     lastMediaTab: normalizeMediaDetailsTab(candidate.lastMediaTab),
     audioEffects: normalizeAudioEffects(candidate.audioEffects),
     videoEffects: normalizeVideoEffects(candidate.videoEffects),
+    recentFiles: normalizeRecentFiles(candidate.recentFiles),
+    playlists: normalizePlaylists(candidate.playlists),
   }
 }
 
@@ -239,5 +372,7 @@ export function toPersistedMemory(memory: AppMemory): PersistedAppMemory {
     lastMediaTab: normalizeMediaDetailsTab(memory.lastMediaTab),
     audioEffects: normalizeAudioEffects(memory.audioEffects),
     videoEffects: normalizeVideoEffects(memory.videoEffects),
+    recentFiles: normalizeRecentFiles(memory.recentFiles),
+    playlists: normalizePlaylists(memory.playlists),
   }
 }

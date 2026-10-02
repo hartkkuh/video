@@ -4,6 +4,8 @@ import Player from "./pages/player/player";
 import SettingsPage from "./pages/settings/settings";
 import EffectsPage from "./pages/effects/effects";
 import MediaDetailsPage from "./pages/media_details/media-details";
+import PlaylistsPage from "./pages/playlists/playlists";
+import ShortcutsPage from "./pages/shortcuts/shortcuts";
 
 export default function Routing() {
     return (
@@ -14,6 +16,8 @@ export default function Routing() {
             <Route path="/media" element={<MediaDetailsPage />} />
             <Route path="/settings" element={<SettingsPage />} />
             <Route path="/about" element={<AboutPage />} />
+            <Route path="/playlists" element={<PlaylistsPage />} />
+            <Route path="/shortcuts" element={<ShortcutsPage />} />
         </Routes>
     );
 }

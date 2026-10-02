@@ -6,6 +6,7 @@ export type {
   MediaDetailsTab,
   AudioEffectsState,
   VideoEffectsState,
+  SavedPlaylist,
 } from '../../shared/app-memory.js'
 export {
   defaultAppMemory,
@@ -14,6 +15,11 @@ export {
   defaultVideoEffects,
   EQUALIZER_BAND_COUNT,
   directoryFromFilePath,
+  rememberRecentFiles,
+  RECENT_FILES_LIMIT,
+  PLAYLIST_LIMIT,
+  appendPlaylistFiles,
+  createPlaylistId,
   mergeAppMemory,
   normalizeMemory,
   normalizePersistedMemory,

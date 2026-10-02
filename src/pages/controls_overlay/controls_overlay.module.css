@@ -13,3 +13,15 @@
 .root :global([data-player-controls-overlay]) {
 	pointer-events: auto;
 }
+
+.panSurface {
+	position: absolute;
+	inset: 0;
+	z-index: 1;
+	cursor: grab;
+	pointer-events: auto;
+}
+
+.panSurface:active {
+	cursor: grabbing;
+}

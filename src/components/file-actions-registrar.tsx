@@ -40,6 +40,12 @@ export function FileActionsRegistrar() {
           openPaths(paths)
         })()
       },
+      openRecent: (filePath: string) => {
+        openPaths([filePath])
+      },
+      openPlaylist: (filePaths: string[]) => {
+        openPaths(filePaths)
+      },
     })
 
     void window.electronAPI?.getLaunchFiles?.().then((paths) => {

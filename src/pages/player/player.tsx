@@ -78,6 +78,7 @@ export default function Player() {
     setShuffleEnabled: persistShuffleEnabled,
     setVolume: persistVolume,
     setVolumeMuted: persistVolumeMuted,
+    touchRecentFile,
   } = useAppMemory()
   const { filePaths, currentIndex, repeatMode, shuffleEnabled, volume } = memory
   const [errorKey, setErrorKey] = useState<'player.invalidFile' | null>(null)
@@ -108,6 +109,12 @@ export default function Player() {
 
   const currentFilePath = filePaths[currentIndex] ?? null
   const hasActiveMedia = Boolean(currentFilePath)
+
+  useEffect(() => {
+    if (currentFilePath) {
+      touchRecentFile(currentFilePath)
+    }
+  }, [currentFilePath, touchRecentFile])
   const currentMediaKind = currentFilePath ? getMediaKind(currentFilePath) : null
   // The native video window covers HTML, so video controls live in a dedicated
   // transparent window. Audio has no native window, so its controls stay as

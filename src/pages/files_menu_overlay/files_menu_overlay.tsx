@@ -2,14 +2,159 @@ import { useEffect, useState } from 'react'
 import { SettingsProvider, useAppSettings } from '../../settings/settings-context'
 import { applyTheme, type AppSettings } from '../../settings/settings'
 import { useAppTranslation } from '../../i18n/useAppTranslation'
-import type { FilesMenuAction, OverlayMenuContent } from '../../types/electron'
+import { getFileName } from '../../tools/media-paths'
+import type {
+  FilesMenuAction,
+  FilesMenuPanel,
+  FilesMenuPlaylistItem,
+  OverlayMenuContent,
+} from '../../types/electron'
 import styles from './files_menu_overlay.module.css'
+
+const thumbnailCache = new Map<string, string | null>()
+
+function isToolsMenu(
+  content: OverlayMenuContent | FilesMenuPanel | null,
+): content is OverlayMenuContent {
+  return Boolean(content && 'items' in content && Array.isArray(content.items))
+}
+
+function useRecentThumbnails(paths: string[]) {
+  const [thumbs, setThumbs] = useState<Record<string, string>>({})
+  const pathKey = paths.join('\0')
+
+  useEffect(() => {
+    const filePaths = pathKey.length > 0 ? pathKey.split('\0') : []
+    if (filePaths.length === 0) {
+      return
+    }
+
+    let cancelled = false
+    const known: Record<string, string> = {}
+    for (const filePath of filePaths) {
+      const cached = thumbnailCache.get(filePath)
+      if (cached) {
+        known[filePath] = cached
+      }
+    }
+    if (Object.keys(known).length > 0) {
+      setThumbs((current) => ({ ...current, ...known }))
+    }
+
+    async function load() {
+      for (const filePath of filePaths) {
+        if (cancelled || thumbnailCache.has(filePath)) {
+          continue
+        }
+
+        const result = await window.electronAPI?.mediaGetThumbnail?.(filePath, { width: 160 })
+        if (cancelled) {
+          return
+        }
+
+        const dataUrl = result?.dataUrl ?? null
+        thumbnailCache.set(filePath, dataUrl)
+        if (dataUrl) {
+          setThumbs((current) => ({ ...current, [filePath]: dataUrl }))
+        }
+      }
+    }
+
+    void load()
+    return () => {
+      cancelled = true
+    }
+  }, [pathKey])
+
+  return thumbs
+}
+
+function RecentFilesList({ paths }: { paths: string[] }) {
+  const { t } = useAppTranslation()
+  const thumbs = useRecentThumbnails(paths)
+
+  return (
+    <div className={styles.recentSection}>
+      <div className={styles.recentHeading}>{t('navbar.recentFiles')}</div>
+      {paths.length === 0 ? (
+        <div className={`${styles.recentItem} ${styles.recentItemEmpty}`} aria-hidden="true">
+          <span className={styles.recentThumb} />
+          <span className={styles.recentText} />
+        </div>
+      ) : null}
+      {paths.map((filePath) => {
+        const image = thumbs[filePath]
+
+        return (
+          <button
+            key={filePath}
+            type="button"
+            className={styles.recentItem}
+            role="menuitem"
+            title={filePath}
+            onClick={() => {
+              window.electronAPI?.sendFilesMenuAction?.({ type: 'recent', path: filePath })
+            }}
+          >
+            <span className={styles.recentThumb}>
+              {image ? <img src={image} alt="" /> : null}
+            </span>
+            <span className={styles.recentText}>
+              <span className={styles.recentName}>{getFileName(filePath)}</span>
+              <span className={styles.recentPath}>{filePath}</span>
+            </span>
+          </button>
+        )
+      })}
+    </div>
+  )
+}
+
+function PlaylistList({ playlists }: { playlists: FilesMenuPlaylistItem[] }) {
+  const { t } = useAppTranslation()
+
+  return (
+    <div className={styles.playlistSection}>
+      <div className={styles.recentHeading}>{t('playlists.title')}</div>
+      {playlists.length === 0 ? (
+        <div className={`${styles.playlistItem} ${styles.recentItemEmpty}`} aria-hidden="true" />
+      ) : (
+        playlists.map((playlist) => (
+          <button
+            key={playlist.id}
+            type="button"
+            className={styles.playlistItem}
+            role="menuitem"
+            onClick={() => {
+              window.electronAPI?.sendFilesMenuAction?.({ type: 'playlist', id: playlist.id })
+            }}
+          >
+            <span className={styles.playlistName}>{playlist.name}</span>
+            <span className={styles.playlistCount}>
+              {t('playlists.trackCount', { count: playlist.count })}
+            </span>
+          </button>
+        ))
+      )}
+      <button
+        type="button"
+        className={styles.playlistItem}
+        role="menuitem"
+        onClick={() => {
+          window.electronAPI?.sendFilesMenuAction?.({ type: 'playlists' })
+        }}
+      >
+        <span className={styles.playlistName}>{t('playlists.manage')}</span>
+      </button>
+    </div>
+  )
+}
 
 function FilesMenuOverlay() {
   const { t } = useAppTranslation()
   const { settings } = useAppSettings()
   const [visible, setVisible] = useState(false)
-  const [content, setContent] = useState<OverlayMenuContent | null>(null)
+  const [content, setContent] = useState<OverlayMenuContent | FilesMenuPanel | null>(null)
 
   useEffect(() => {
     applyTheme(settings.theme)
@@ -81,7 +226,7 @@ function FilesMenuOverlay() {
     return null
   }
 
-  if (content) {
+  if (isToolsMenu(content)) {
     return (
       <div className={styles.menu} role="menu" aria-label={content.ariaLabel}>
         {content.items.map((item) => (
@@ -105,6 +250,23 @@ function FilesMenuOverlay() {
       </div>
     )
   }
+
+  const recentFiles =
+    content && 'recentFiles' in content && Array.isArray(content.recentFiles)
+      ? content.recentFiles.filter((filePath) => typeof filePath === 'string' && filePath.length > 0)
+      : []
+  const playlists =
+    content && 'playlists' in content && Array.isArray(content.playlists)
+      ? content.playlists.filter(
+          (playlist): playlist is FilesMenuPlaylistItem =>
+            Boolean(playlist) &&
+            typeof playlist.id === 'string' &&
+            playlist.id.length > 0 &&
+            typeof playlist.name === 'string' &&
+            playlist.name.length > 0 &&
+            typeof playlist.count === 'number',
+        )
+      : []
 
   return (
     <div className={styles.menu} role="menu" aria-label={t('navbar.openFiles')}>
@@ -132,6 +294,8 @@ function FilesMenuOverlay() {
       >
         {t('navbar.openFolder')}
       </button>
+      <RecentFilesList paths={recentFiles} />
+      <PlaylistList playlists={playlists} />
     </div>
   )
 }
