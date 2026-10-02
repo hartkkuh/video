@@ -196,7 +196,7 @@ export class MediaProbeService {
     this.libvlc_media_player_new = lib.func('libvlc_media_player_new', 'void *', ['void *'])
     this.libvlc_media_player_release = lib.func('libvlc_media_player_release', 'void', ['void *'])
     this.libvlc_media_player_set_media = lib.func('libvlc_media_player_set_media', 'void', ['void *', 'void *'])
-    this.libvlc_media_player_set_hwnd = lib.func('libvlc_media_player_set_hwnd', 'void', ['void *', 'int64'])
+    this.libvlc_media_player_set_hwnd = lib.func('libvlc_media_player_set_hwnd', 'void', ['void *', 'void *'])
     this.libvlc_media_player_play = lib.func('libvlc_media_player_play', 'int', ['void *'])
     this.libvlc_media_player_stop = lib.func('libvlc_media_player_stop', 'void', ['void *'])
     this.libvlc_media_player_set_time = lib.func('libvlc_media_player_set_time', 'void', ['void *', 'int64'])

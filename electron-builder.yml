@@ -7,7 +7,7 @@ directories:
 publish:
   provider: github
   owner: hartkkuh
-  repo: video
+  repo: FMP-Media-Player
   releaseType: release
 files:
   - dist/**/*

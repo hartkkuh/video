@@ -209,7 +209,7 @@ function ControlsOverlay() {
   }, [revealControls])
 
   useEffect(() => {
-    if (controlsVisible || !state.hasActiveMedia) {
+    if (!state.hasActiveMedia) {
       return
     }
 
@@ -225,7 +225,22 @@ function ControlsOverlay() {
         const previous = last
         last = { x: cursor.x, y: cursor.y }
 
-        if (!cursor.inside || !previous) {
+        if (!cursor.inside) {
+          return
+        }
+
+        const rect = controlsHitRect()
+        const overControls = Boolean(rect && isPointInRect(cursor.x, cursor.y, rect))
+
+        // Showing the overlay used to force click-through and then leave the
+        // bar visible but not interactive, because this poll only ran while
+        // the bar was hidden. Recover as soon as the pointer is over it.
+        if (overControls && !interactiveRef.current) {
+          revealControls()
+          return
+        }
+
+        if (controlsVisible || !previous) {
           return
         }
 

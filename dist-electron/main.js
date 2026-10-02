@@ -2,31 +2,31 @@ import { createRequire as e } from "node:module";
 import { BrowserWindow as t, Menu as n, app as r, dialog as i, ipcMain as a, nativeImage as o, net as s, screen as c, shell as l } from "electron";
 import u from "node:fs";
 import d from "node:path";
-import { spawn as ee } from "node:child_process";
-import f from "node:fs/promises";
-import p from "node:https";
-import { URL as m, fileURLToPath as h } from "node:url";
+import { spawn as f } from "node:child_process";
+import p from "node:fs/promises";
+import m from "node:https";
+import { URL as h, fileURLToPath as g } from "node:url";
 //#region shared/vlc-media-extensions.ts
-var g = /* @__PURE__ */ ".3ga,.669,.a52,.aac,.ac3,.adt,.adts,.aif,.aifc,.aiff,.alac,.amb,.amr,.aob,.ape,.au,.awb,.caf,.dts,.dsf,.dff,.flac,.it,.kar,.m4a,.m4b,.m4p,.m5p,.mid,.mka,.mlp,.mod,.mpa,.mp1,.mp2,.mp3,.mpc,.mpga,.mus,.oga,.ogg,.oma,.opus,.qcp,.ra,.rmi,.s3m,.sid,.spx,.tak,.thd,.tta,.voc,.vqf,.w64,.wav,.wma,.wv,.xa,.xm".split(","), _ = /* @__PURE__ */ ".3g2,.3gp,.3gp2,.3gpp,.amrec,.amv,.asf,.avi,.bik,.bin,.crf,.dav,.divx,.drc,.dv,.dvr-ms,.evo,.f4v,.flv,.gvi,.gxf,.iso,.k3g,.m1v,.m2v,.m2t,.m2ts,.m4v,.mkv,.mov,.mp2,.mp2v,.mp4,.mp4v,.mpe,.mpeg,.mpeg1,.mpeg2,.mpeg4,.mpg,.mpv2,.mts,.mtv,.mxf,.mxg,.nsv,.nuv,.ogg,.ogm,.ogv,.ogx,.ps,.qt,.rec,.rm,.rmvb,.rpl,.skm,.thp,.tod,.tp,.ts,.tts,.txd,.vob,.vp6,.vro,.webm,.wm,.wmv,.wtv,.xesc".split(","), te = /* @__PURE__ */ ".cdg,.idx,.srt,.sub,.utf,.ass,.ssa,.aqt,.jss,.psb,.rt,.sami,.smi,.txt,.smil,.stl,.usf,.dks,.pjs,.mpl2,.mks,.vtt,.tt,.ttml,.dfxp,.scc".split(",");
-function ne(...e) {
+var _ = /* @__PURE__ */ ".3ga,.669,.a52,.aac,.ac3,.adt,.adts,.aif,.aifc,.aiff,.alac,.amb,.amr,.aob,.ape,.au,.awb,.caf,.dts,.dsf,.dff,.flac,.it,.kar,.m4a,.m4b,.m4p,.m5p,.mid,.mka,.mlp,.mod,.mpa,.mp1,.mp2,.mp3,.mpc,.mpga,.mus,.oga,.ogg,.oma,.opus,.qcp,.ra,.rmi,.s3m,.sid,.spx,.tak,.thd,.tta,.voc,.vqf,.w64,.wav,.wma,.wv,.xa,.xm".split(","), v = /* @__PURE__ */ ".3g2,.3gp,.3gp2,.3gpp,.amrec,.amv,.asf,.avi,.bik,.bin,.crf,.dav,.divx,.drc,.dv,.dvr-ms,.evo,.f4v,.flv,.gvi,.gxf,.iso,.k3g,.m1v,.m2v,.m2t,.m2ts,.m4v,.mkv,.mov,.mp2,.mp2v,.mp4,.mp4v,.mpe,.mpeg,.mpeg1,.mpeg2,.mpeg4,.mpg,.mpv2,.mts,.mtv,.mxf,.mxg,.nsv,.nuv,.ogg,.ogm,.ogv,.ogx,.ps,.qt,.rec,.rm,.rmvb,.rpl,.skm,.thp,.tod,.tp,.ts,.tts,.txd,.vob,.vp6,.vro,.webm,.wm,.wmv,.wtv,.xesc".split(","), ee = /* @__PURE__ */ ".cdg,.idx,.srt,.sub,.utf,.ass,.ssa,.aqt,.jss,.psb,.rt,.sami,.smi,.txt,.smil,.stl,.usf,.dks,.pjs,.mpl2,.mks,.vtt,.tt,.ttml,.dfxp,.scc".split(",");
+function te(...e) {
 	return [...new Set(e.flat())];
 }
-var re = ne(g, _), v = {
-	audio: g,
-	video: _,
-	subtitles: te,
-	media: re
-}, ie = new Set(re);
-function ae(e) {
+var ne = te(_, v), y = {
+	audio: _,
+	video: v,
+	subtitles: ee,
+	media: ne
+}, re = new Set(ne);
+function ie(e) {
 	let t = d.extname(e).toLowerCase();
-	return ie.has(t);
+	return re.has(t);
 }
-function oe(e) {
+function ae(e) {
 	let t = [];
 	for (let n of e.slice(1)) {
-		if (!n || n === "." || n.startsWith("-") || /\.(exe|asar)$/i.test(n) && !ae(n)) continue;
+		if (!n || n === "." || n.startsWith("-") || /\.(exe|asar)$/i.test(n) && !ie(n)) continue;
 		let e = d.resolve(n);
-		if (ae(e)) {
+		if (ie(e)) {
 			try {
 				if (!u.existsSync(e) || !u.statSync(e).isFile()) continue;
 			} catch {
@@ -39,8 +39,8 @@ function oe(e) {
 }
 //#endregion
 //#region shared/updates.ts
-function se(e, t) {
-	let n = ce(e), r = ce(t), i = Math.max(n.length, r.length);
+function oe(e, t) {
+	let n = se(e), r = se(t), i = Math.max(n.length, r.length);
 	for (let e = 0; e < i; e += 1) {
 		let t = n[e] ?? 0, i = r[e] ?? 0;
 		if (t > i) return 1;
@@ -48,11 +48,11 @@ function se(e, t) {
 	}
 	return 0;
 }
-function y(e) {
+function b(e) {
 	return e.trim().replace(/^v/i, "");
 }
-function ce(e) {
-	let t = y(e);
+function se(e) {
+	let t = b(e);
 	return t ? t.split(/[.+_-]/).map((e) => {
 		let t = e.match(/^\d+/);
 		return t ? Number(t[0]) : 0;
@@ -60,15 +60,15 @@ function ce(e) {
 }
 //#endregion
 //#region electron/updates.ts
-var b = {
+var x = {
 	owner: "hartkkuh",
 	name: "video"
-}, le = 12e3, ue = 600 * 1e3, de = ["main", "master"], x = "FMP Video Player", fe = !1;
-function S() {
+}, ce = 12e3, le = 600 * 1e3, ue = ["main", "master"], S = "FMP Video Player", de = !1;
+function C() {
 	return r.getVersion();
 }
-async function pe() {
-	let e = S(), t = [], n = [];
+async function fe() {
+	let e = C(), t = [], n = [];
 	try {
 		let t = await xe(e);
 		t && n.push(t);
@@ -87,11 +87,11 @@ async function pe() {
 		message: t.length > 0 ? t.join(" | ") : "Update source not found (private repository or missing public Release/update.json)"
 	};
 }
-async function me(e) {
+async function pe(e) {
 	return typeof e != "string" || !/^https?:\/\//i.test(e) ? !1 : (await l.openExternal(e), !0);
 }
-async function he(e, t) {
-	if (fe) return {
+async function me(e, t) {
+	if (de) return {
 		ok: !1,
 		message: "Update already in progress"
 	};
@@ -99,11 +99,11 @@ async function he(e, t) {
 		ok: !1,
 		message: "Invalid download URL"
 	};
-	fe = !0;
+	de = !0;
 	try {
-		let n = await ge(e), i = d.join(r.getPath("temp"), `FMP-Video-Player-Setup-${S()}-update.exe`);
-		await _e(n, i, t);
-		let a = d.join(process.env.LOCALAPPDATA || "", "Programs", x, `${x}.exe`), o = d.join(process.env.ProgramFiles || "C:\\Program Files", x, `${x}.exe`), s = d.join(r.getPath("temp"), `fmp-update-launch-${Date.now()}.cmd`), c = [
+		let n = await he(e), i = d.join(r.getPath("temp"), `FMP-Video-Player-Setup-${C()}-update.exe`);
+		await ge(n, i, t);
+		let a = d.join(process.env.LOCALAPPDATA || "", "Programs", S, `${S}.exe`), o = d.join(process.env.ProgramFiles || "C:\\Program Files", S, `${S}.exe`), s = d.join(r.getPath("temp"), `fmp-update-launch-${Date.now()}.cmd`), c = [
 			"@echo off",
 			`start /wait "" "${i}" /S`,
 			`if exist "${a}" (`,
@@ -115,7 +115,7 @@ async function he(e, t) {
 			"del /f /q \"%~f0\" >nul 2>&1",
 			""
 		].join("\r\n");
-		return await f.writeFile(s, c, "utf8"), ee("cmd.exe", ["/c", s], {
+		return await p.writeFile(s, c, "utf8"), f("cmd.exe", ["/c", s], {
 			detached: !0,
 			stdio: "ignore",
 			windowsHide: !0
@@ -123,46 +123,46 @@ async function he(e, t) {
 			r.quit();
 		}, 500), { ok: !0 };
 	} catch (e) {
-		return fe = !1, {
+		return de = !1, {
 			ok: !1,
 			message: T(e)
 		};
 	}
 }
-async function ge(e) {
+async function he(e) {
 	let t = e.trim();
 	if (/\.exe($|\?)/i.test(t)) return t;
-	let n = await xe(S());
+	let n = await xe(C());
 	if (n?.downloadUrl && /\.exe($|\?)/i.test(n.downloadUrl)) return n.downloadUrl;
 	throw Error("Could not resolve installer download URL");
 }
-async function _e(e, t, n) {
+async function ge(e, t, n) {
 	let r = [];
 	try {
-		await ve(e, t, n);
+		await _e(e, t, n);
 		return;
 	} catch (e) {
 		r.push(`chromium: ${T(e)}`);
 	}
 	try {
-		await C(e, t, !0, n);
+		await ve(e, t, !0, n);
 		return;
 	} catch (e) {
 		r.push(`node: ${T(e)}`);
 	}
 	try {
-		await C(e, t, !1, n);
+		await ve(e, t, !1, n);
 	} catch (e) {
 		throw r.push(`node-insecure: ${T(e)}`), Error(r.join(" | "));
 	}
 }
-async function ve(e, t, n) {
+async function _e(e, t, n) {
 	if (!r.isReady()) throw Error("App is not ready");
 	let i = await s.fetch(e, {
 		method: "GET",
 		redirect: "follow",
 		headers: {
-			"User-Agent": `FMP-Video-Player/${S()}`,
+			"User-Agent": `FMP-Video-Player/${C()}`,
 			Accept: "application/octet-stream,*/*"
 		}
 	});
@@ -170,7 +170,7 @@ async function ve(e, t, n) {
 	let a = Number(i.headers.get("content-length") ?? 0), o = i.body?.getReader();
 	if (!o) {
 		let e = Buffer.from(await i.arrayBuffer());
-		await f.writeFile(t, e), n?.({
+		await p.writeFile(t, e), n?.({
 			receivedBytes: e.length,
 			totalBytes: e.length,
 			percent: 100
@@ -187,30 +187,30 @@ async function ve(e, t, n) {
 			percent: a > 0 ? Math.min(100, Math.round(l / a * 100)) : 0
 		}));
 	}
-	await f.writeFile(t, Buffer.concat(c)), a <= 0 && n?.({
+	await p.writeFile(t, Buffer.concat(c)), a <= 0 && n?.({
 		receivedBytes: l,
 		totalBytes: l,
 		percent: 100
 	});
 }
-function C(e, t, n, r) {
+function ve(e, t, n, r) {
 	return new Promise((i, a) => {
-		let o = new m(e), s = p.request({
+		let o = new h(e), s = m.request({
 			protocol: o.protocol,
 			hostname: o.hostname,
 			port: o.port || 443,
 			path: `${o.pathname}${o.search}`,
 			method: "GET",
 			headers: {
-				"User-Agent": `FMP-Video-Player/${S()}`,
+				"User-Agent": `FMP-Video-Player/${C()}`,
 				Accept: "application/octet-stream,*/*"
 			},
 			rejectUnauthorized: n,
-			timeout: ue
+			timeout: le
 		}, (e) => {
 			let o = e.statusCode ?? 0;
 			if (o >= 300 && o < 400 && e.headers.location) {
-				e.resume(), C(e.headers.location, t, n, r).then(i).catch(a);
+				e.resume(), ve(e.headers.location, t, n, r).then(i).catch(a);
 				return;
 			}
 			if (o < 200 || o >= 300) {
@@ -244,8 +244,8 @@ function C(e, t, n, r) {
 function ye(e) {
 	let t = null;
 	for (let n of e) {
-		let e = y(n.version);
-		e && (!t || se(e, t.version) > 0) && (t = {
+		let e = b(n.version);
+		e && (!t || oe(e, t.version) > 0) && (t = {
 			...n,
 			version: e
 		});
@@ -253,8 +253,8 @@ function ye(e) {
 	return t;
 }
 function be(e, t) {
-	let n = y(t.version);
-	return n ? se(n, e) <= 0 ? {
+	let n = b(t.version);
+	return n ? oe(n, e) <= 0 ? {
 		status: "up-to-date",
 		currentVersion: e,
 		latestVersion: n
@@ -272,10 +272,10 @@ function be(e, t) {
 	};
 }
 async function xe(e) {
-	let t = await w(`https://api.github.com/repos/${b.owner}/${b.name}/releases/latest`, we(e));
+	let t = await w(`https://api.github.com/repos/${x.owner}/${x.name}/releases/latest`, we(e));
 	if (t.status === 200) return Ce(JSON.parse(t.body));
 	if (t.status !== 404) throw Error(`GitHub latest release HTTP ${t.status}`);
-	let n = await w(`https://api.github.com/repos/${b.owner}/${b.name}/releases?per_page=10`, we(e));
+	let n = await w(`https://api.github.com/repos/${x.owner}/${x.name}/releases?per_page=10`, we(e));
 	if (n.status === 404) return null;
 	if (n.status < 200 || n.status >= 300) throw Error(`GitHub releases HTTP ${n.status}`);
 	let r = JSON.parse(n.body);
@@ -284,9 +284,9 @@ async function xe(e) {
 	return i ? Ce(i) : null;
 }
 async function Se(e) {
-	let t = `https://github.com/${b.owner}/${b.name}/releases/latest`, n = [], r = [];
-	for (let i of de) {
-		let a = `https://raw.githubusercontent.com/${b.owner}/${b.name}/${i}/update.json`;
+	let t = `https://github.com/${x.owner}/${x.name}/releases/latest`, n = [], r = [];
+	for (let i of ue) {
+		let a = `https://raw.githubusercontent.com/${x.owner}/${x.name}/${i}/update.json`;
 		try {
 			let o = await w(a, {
 				"User-Agent": `FMP-Video-Player/${e}`,
@@ -295,7 +295,7 @@ async function Se(e) {
 			});
 			if (o.status !== 404) if (o.status < 200 || o.status >= 300) r.push(`update.json@${i}: HTTP ${o.status}`);
 			else {
-				let e = JSON.parse(o.body), r = y(String(e.version ?? ""));
+				let e = JSON.parse(o.body), r = b(String(e.version ?? ""));
 				if (r) {
 					let i = typeof e.downloadUrl == "string" && e.downloadUrl ? e.downloadUrl : t;
 					n.push({
@@ -309,7 +309,7 @@ async function Se(e) {
 		} catch (e) {
 			r.push(`update.json@${i}: ${T(e)}`);
 		}
-		let o = `https://raw.githubusercontent.com/${b.owner}/${b.name}/${i}/package.json`;
+		let o = `https://raw.githubusercontent.com/${x.owner}/${x.name}/${i}/package.json`;
 		try {
 			let a = await w(o, {
 				"User-Agent": `FMP-Video-Player/${e}`,
@@ -321,7 +321,7 @@ async function Se(e) {
 				r.push(`package.json@${i}: HTTP ${a.status}`);
 				continue;
 			}
-			let s = JSON.parse(a.body), c = y(String(s.version ?? ""));
+			let s = JSON.parse(a.body), c = b(String(s.version ?? ""));
 			if (!c) continue;
 			n.push({
 				version: c,
@@ -337,9 +337,9 @@ async function Se(e) {
 	return n;
 }
 function Ce(e) {
-	let t = y(String(e.tag_name ?? ""));
+	let t = b(String(e.tag_name ?? ""));
 	if (!t) return null;
-	let n = typeof e.html_url == "string" && e.html_url ? e.html_url : `https://github.com/${b.owner}/${b.name}/releases/latest`;
+	let n = typeof e.html_url == "string" && e.html_url ? e.html_url : `https://github.com/${x.owner}/${x.name}/releases/latest`;
 	return {
 		version: t,
 		releaseUrl: n,
@@ -379,7 +379,7 @@ async function Te(e, t) {
 		method: "GET",
 		headers: t,
 		redirect: "follow",
-		signal: AbortSignal.timeout(le)
+		signal: AbortSignal.timeout(ce)
 	});
 	return {
 		status: n.status,
@@ -388,7 +388,7 @@ async function Te(e, t) {
 }
 function Ee(e, t, n) {
 	return new Promise((r, i) => {
-		let a = new m(e), o = p.request({
+		let a = new h(e), o = m.request({
 			protocol: a.protocol,
 			hostname: a.hostname,
 			port: a.port || 443,
@@ -396,7 +396,7 @@ function Ee(e, t, n) {
 			method: "GET",
 			headers: t,
 			rejectUnauthorized: n,
-			timeout: le
+			timeout: ce
 		}, (e) => {
 			let t = [];
 			e.on("data", (e) => {
@@ -436,63 +436,63 @@ function De(e, t) {
 //#endregion
 //#region electron/open-files.ts
 var Oe = {
-	audio: new Set(v.audio),
-	video: new Set(v.video),
-	subtitles: new Set(v.subtitles),
-	media: new Set(v.media)
+	audio: new Set(y.audio),
+	video: new Set(y.video),
+	subtitles: new Set(y.subtitles),
+	media: new Set(y.media)
 }, ke = {
 	audio: "Audio",
 	video: "Video",
 	subtitles: "Subtitles",
 	media: "Audio and Video"
 };
-function Ae(e) {
+function E(e) {
 	return e === "audio" || e === "video" || e === "subtitles" || e === "media";
 }
-function je(e) {
-	let t = v[e].map((e) => e.slice(1));
+function Ae(e) {
+	let t = y[e].map((e) => e.slice(1));
 	return [{
 		name: ke[e],
 		extensions: t
 	}];
 }
-function Me(e, t) {
+function je(e, t) {
 	let n = d.extname(e).toLowerCase();
 	return Oe[t].has(n);
 }
-async function Ne(e, t) {
-	let n = await f.readdir(e, { withFileTypes: !0 }), r = [];
+async function Me(e, t) {
+	let n = await p.readdir(e, { withFileTypes: !0 }), r = [];
 	for (let i of n) {
 		if (!i.isFile()) continue;
 		let n = d.join(e, i.name);
-		Me(n, t) && r.push(n);
+		je(n, t) && r.push(n);
 	}
 	return r.sort((e, t) => e.localeCompare(t));
 }
-async function Pe(e, t, n) {
+async function Ne(e, t, n) {
 	let r = await i.showOpenDialog(e, {
 		properties: ["openFile"],
-		filters: je(t),
+		filters: Ae(t),
 		...n ? { defaultPath: n } : {}
 	});
 	return r.canceled || r.filePaths.length === 0 ? null : r.filePaths[0];
 }
-async function Fe(e, t, n) {
+async function Pe(e, t, n) {
 	let r = await i.showOpenDialog(e, {
 		properties: ["openFile", "multiSelections"],
-		filters: je(t),
+		filters: Ae(t),
 		...n ? { defaultPath: n } : {}
 	});
 	return r.canceled ? [] : r.filePaths;
 }
-async function Ie(e, t, n) {
+async function Fe(e, t, n) {
 	let r = await i.showOpenDialog(e, {
 		properties: ["openDirectory"],
 		...n ? { defaultPath: n } : {}
 	});
-	return r.canceled || r.filePaths.length === 0 ? [] : Ne(r.filePaths[0], t);
+	return r.canceled || r.filePaths.length === 0 ? [] : Me(r.filePaths[0], t);
 }
-var E = {
+var D = {
 	volume: 1,
 	volumeMuted: !1,
 	playbackRate: 1,
@@ -516,99 +516,99 @@ var E = {
 		blur: 0
 	}
 };
-({ ...E });
-function Le(e) {
+({ ...D });
+function Ie(e) {
 	return e === "all" || e === "one" ? e : "off";
 }
-function Re(e) {
+function Le(e) {
 	return e === "video" ? "video" : "audio";
 }
-function ze(e) {
+function Re(e) {
 	return e === "encoding" ? "encoding" : "file";
 }
-function Be(e) {
+function ze(e) {
 	return Array.isArray(e) ? e.filter((e) => typeof e == "string" && e.length > 0) : [];
 }
+function Be(e) {
+	return typeof e != "number" || !Number.isFinite(e) ? D.volume : Math.min(2, Math.max(0, e));
+}
 function Ve(e) {
-	return typeof e != "number" || !Number.isFinite(e) ? E.volume : Math.min(2, Math.max(0, e));
+	return typeof e != "number" || !Number.isFinite(e) ? D.playbackRate : Math.min(2, Math.max(.25, e));
 }
-function He(e) {
-	return typeof e != "number" || !Number.isFinite(e) ? E.playbackRate : Math.min(2, Math.max(.25, e));
-}
-function Ue(e, t) {
+function He(e, t) {
 	return typeof e != "number" || !Number.isFinite(e) || t === 0 ? 0 : Math.min(Math.max(0, Math.floor(e)), t - 1);
 }
-function We(e) {
+function Ue(e) {
 	return typeof e == "string" ? e : "";
 }
-function D(e, t, n, r) {
+function O(e, t, n, r) {
 	return typeof e != "number" || !Number.isFinite(e) ? r : Math.min(n, Math.max(t, e));
 }
-function Ge(e) {
+function We(e) {
 	let t = typeof e == "object" && e ? e : {}, n = Array.isArray(t.bands) ? t.bands : [];
 	return {
-		bands: Array.from({ length: 10 }, (e, t) => D(n[t], -12, 12, 0)),
-		outputGain: D(t.outputGain, .5, 2, 1)
+		bands: Array.from({ length: 10 }, (e, t) => O(n[t], -12, 12, 0)),
+		outputGain: O(t.outputGain, .5, 2, 1)
+	};
+}
+function Ge(e) {
+	let t = typeof e == "object" && e ? e : {};
+	return {
+		grayscale: O(t.grayscale, 0, 100, 0),
+		contrast: O(t.contrast, 0, 3, 1),
+		brightness: O(t.brightness, 0, 3, 1),
+		saturation: O(t.saturation, 0, 3, 1),
+		sepia: O(t.sepia, 0, 100, 0),
+		hue: O(t.hue, 0, 360, 0),
+		gamma: O(t.gamma, .01, 10, 1),
+		blur: O(t.blur, 0, 10, 0)
 	};
 }
 function Ke(e) {
-	let t = typeof e == "object" && e ? e : {};
-	return {
-		grayscale: D(t.grayscale, 0, 100, 0),
-		contrast: D(t.contrast, 0, 3, 1),
-		brightness: D(t.brightness, 0, 3, 1),
-		saturation: D(t.saturation, 0, 3, 1),
-		sepia: D(t.sepia, 0, 100, 0),
-		hue: D(t.hue, 0, 360, 0),
-		gamma: D(t.gamma, .01, 10, 1),
-		blur: D(t.blur, 0, 10, 0)
-	};
-}
-function qe(e) {
 	let t = e.replace(/\\/g, "/"), n = t.lastIndexOf("/");
 	return n < 0 ? "" : e.slice(0, e.length - (t.length - n));
 }
-function Je(e) {
-	let t = We(e.lastOpenDirectory);
+function qe(e) {
+	let t = Ue(e.lastOpenDirectory);
 	if (t.length > 0) return t;
-	let n = Be(e.filePaths);
-	return n.length === 0 ? "" : qe(n[Ue(e.currentIndex, n.length)] ?? n[n.length - 1]);
+	let n = ze(e.filePaths);
+	return n.length === 0 ? "" : Ke(n[He(e.currentIndex, n.length)] ?? n[n.length - 1]);
 }
-function Ye(e) {
-	if (typeof e != "object" || !e) return E;
+function Je(e) {
+	if (typeof e != "object" || !e) return D;
 	let t = e;
 	return {
-		volume: Ve(t.volume),
+		volume: Be(t.volume),
 		volumeMuted: t.volumeMuted === !0,
-		playbackRate: He(t.playbackRate),
-		repeatMode: Le(t.repeatMode),
+		playbackRate: Ve(t.playbackRate),
+		repeatMode: Ie(t.repeatMode),
 		shuffleEnabled: t.shuffleEnabled === !0,
-		lastOpenDirectory: Je(t),
-		lastEffectsTab: Re(t.lastEffectsTab),
-		lastMediaTab: ze(t.lastMediaTab),
-		audioEffects: Ge(t.audioEffects),
-		videoEffects: Ke(t.videoEffects)
+		lastOpenDirectory: qe(t),
+		lastEffectsTab: Le(t.lastEffectsTab),
+		lastMediaTab: Re(t.lastMediaTab),
+		audioEffects: We(t.audioEffects),
+		videoEffects: Ge(t.videoEffects)
 	};
 }
 //#endregion
 //#region electron/memory.ts
-var Xe = E;
-async function Ze(e) {
+var Ye = D;
+async function Xe(e) {
 	if (!e) return !1;
 	try {
-		return (await f.stat(e)).isDirectory();
+		return (await p.stat(e)).isDirectory();
 	} catch {
 		return !1;
 	}
 }
-async function O(e) {
-	let t = Ye(e);
-	return !t.lastOpenDirectory || await Ze(t.lastOpenDirectory) ? t : {
+async function k(e) {
+	let t = Je(e);
+	return !t.lastOpenDirectory || await Xe(t.lastOpenDirectory) ? t : {
 		...t,
 		lastOpenDirectory: ""
 	};
 }
-function Qe(e) {
+function Ze(e) {
 	return {
 		...e,
 		filePaths: [],
@@ -617,37 +617,37 @@ function Qe(e) {
 }
 //#endregion
 //#region electron/settings.ts
-var k = {
+var A = {
 	language: "he",
 	theme: "dark",
 	controlsPosition: "bottom"
 };
-function $e(e) {
-	return e === "en" || e === "he" ? e : k.language;
+function Qe(e) {
+	return e === "en" || e === "he" ? e : A.language;
 }
-function et(e) {
+function $e(e) {
 	return e === "light" ? "light" : "dark";
 }
-function tt(e) {
-	return e === "top" ? "top" : k.controlsPosition;
+function et(e) {
+	return e === "top" ? "top" : A.controlsPosition;
 }
-function nt(e) {
-	if (typeof e != "object" || !e) return k;
+function j(e) {
+	if (typeof e != "object" || !e) return A;
 	let t = e;
 	return {
-		language: $e(t.language),
-		theme: et(t.theme),
-		controlsPosition: tt(t.controlsPosition)
+		language: Qe(t.language),
+		theme: $e(t.theme),
+		controlsPosition: et(t.controlsPosition)
 	};
 }
 //#endregion
 //#region electron/libvlc-path.ts
-function rt() {
+function tt() {
 	return r.isPackaged ? d.join(process.resourcesPath, "libvlc") : d.join(r.getAppPath(), "libvlc");
 }
 //#endregion
 //#region electron/vlc-effects.ts
-var it = {
+var nt = {
 	grayscale: 0,
 	contrast: 1,
 	brightness: 1,
@@ -657,52 +657,58 @@ var it = {
 	gamma: 1,
 	blur: 0
 };
-function A(e) {
+function M(e) {
 	return e.bands.every((e) => Math.abs(e) < .01) && Math.abs(e.outputGain - 1) < .01;
 }
-function at(e) {
+function rt(e) {
 	return e.grayscale === 0 && Math.abs(e.contrast - 1) < .01 && Math.abs(e.brightness - 1) < .01 && Math.abs(e.saturation - 1) < .01 && e.sepia === 0 && Math.abs(e.hue) < .01 && Math.abs(e.gamma - 1) < .01 && e.blur === 0;
 }
-function ot(e) {
+function it(e) {
 	return 20 * Math.log10(Math.min(2, Math.max(.5, e)));
 }
-function st(e) {
+function at(e) {
 	return Math.abs(e) <= 180 ? e : e - 360;
 }
-function ct(e) {
+function ot(e) {
 	let t = 1 - e.grayscale / 100, n = e.sepia / 100;
 	return {
-		enabled: !at(e),
+		enabled: !rt(e),
 		brightness: e.brightness * (1 + n * .06),
 		contrast: e.contrast * (1 + n * .08),
 		saturation: e.saturation * t * (1 - n * .45),
-		hue: st(e.hue + n * 55),
+		hue: at(e.hue + n * 55),
 		gamma: e.gamma * (1 - n * .04)
 	};
 }
-function lt(e) {
+function st(e) {
 	return e.blur > 0;
 }
-function ut(e) {
+function ct(e) {
 	return e.blur <= 0 ? [] : [":video-filter=gaussianblur", `:gaussianblur-sigma=${Math.max(.1, e.blur).toFixed(2)}`];
 }
 //#endregion
 //#region electron/win32-api.ts
-var dt = e(import.meta.url)("koffi");
-function j(e) {
+var lt = e(import.meta.url)("koffi"), ut = -16, dt = 2, ft = 5;
+function N(e) {
+	return typeof e == "bigint" ? e : typeof e == "number" && Number.isFinite(e) ? BigInt(Math.trunc(e)) : 0n;
+}
+function pt(e) {
 	return e.length >= 8 ? e.readBigInt64LE(0) : BigInt(e.readUInt32LE(0));
 }
-function ft(e) {
-	return Number(j(e));
-}
-var pt = class {
+var mt = class {
 	setWindowPos;
 	moveWindow;
 	showWindow;
 	isWindow;
 	bringWindowToTop;
+	findWindowExW;
+	getParent;
+	setParent;
+	getWindowLongPtrW;
+	setWindowLongPtrW;
+	getWindow;
 	constructor() {
-		let e = dt.load("user32.dll");
+		let e = lt.load("user32.dll");
 		this.setWindowPos = e.func("SetWindowPos", "bool", [
 			"uintptr",
 			"uintptr",
@@ -718,35 +724,138 @@ var pt = class {
 			"int",
 			"int",
 			"bool"
-		]), this.showWindow = e.func("ShowWindow", "bool", ["uintptr", "int"]), this.isWindow = e.func("IsWindow", "bool", ["uintptr"]), this.bringWindowToTop = e.func("BringWindowToTop", "bool", ["uintptr"]);
+		]), this.showWindow = e.func("ShowWindow", "bool", ["uintptr", "int"]), this.isWindow = e.func("IsWindow", "bool", ["uintptr"]), this.bringWindowToTop = e.func("BringWindowToTop", "bool", ["uintptr"]), this.findWindowExW = e.func("FindWindowExW", "uintptr", [
+			"uintptr",
+			"uintptr",
+			"str16",
+			"str16"
+		]), this.getParent = e.func("GetParent", "uintptr", ["uintptr"]), this.setParent = e.func("SetParent", "uintptr", ["uintptr", "uintptr"]), this.getWindowLongPtrW = e.func("GetWindowLongPtrW", "intptr", ["uintptr", "int"]), this.setWindowLongPtrW = e.func("SetWindowLongPtrW", "intptr", [
+			"uintptr",
+			"int",
+			"intptr"
+		]), this.getWindow = e.func("GetWindow", "uintptr", ["uintptr", "uint"]);
 	}
 	isValidWindow(e) {
-		return e !== 0 && this.isWindow(e);
+		let t = N(e);
+		return t !== 0n && this.isWindow(t);
 	}
 	moveWindowRepaint(e, t, n, r, i, a = !0) {
-		return this.isValidWindow(e) ? this.moveWindow(e, Math.round(t), Math.round(n), Math.max(1, Math.round(r)), Math.max(1, Math.round(i)), a) : !1;
+		let o = N(e);
+		return this.isValidWindow(o) ? this.moveWindow(o, Math.round(t), Math.round(n), Math.max(1, Math.round(r)), Math.max(1, Math.round(i)), a) : !1;
 	}
 	setWindowPosFlags(e, t, n, r, i, a, o) {
-		return this.isValidWindow(e) ? this.setWindowPos(e, t, Math.round(n), Math.round(r), Math.max(1, Math.round(i)), Math.max(1, Math.round(a)), o) : !1;
+		let s = N(e);
+		return this.isValidWindow(s) ? this.setWindowPos(s, N(t), Math.round(n), Math.round(r), Math.max(1, Math.round(i)), Math.max(1, Math.round(a)), o) : !1;
 	}
 	positionWindow(e, t, n, r, i, a = !1) {
-		if (!this.isValidWindow(e)) return !1;
-		let o = 16 | (a ? 64 : 4);
-		return this.setWindowPos(e, 0, Math.round(t), Math.round(n), Math.max(1, Math.round(r)), Math.max(1, Math.round(i)), o);
+		let o = N(e);
+		if (!this.isValidWindow(o)) return !1;
+		let s = 16 | (a ? 64 : 4);
+		return this.setWindowPos(o, 0n, Math.round(t), Math.round(n), Math.max(1, Math.round(r)), Math.max(1, Math.round(i)), s);
 	}
 	hideWindow(e) {
-		this.isValidWindow(e) && (this.setWindowPos(e, 0, 0, 0, 0, 0, 151), this.showWindow(e, 0));
+		let t = N(e);
+		this.isValidWindow(t) && (this.setWindowPos(t, 0n, 0, 0, 0, 0, 151), this.showWindow(t, 0));
 	}
 	showWindowNoActivate(e) {
-		this.isValidWindow(e) && (this.showWindow(e, 8), this.bringWindowToTop(e));
+		let t = N(e);
+		this.isValidWindow(t) && (this.showWindow(t, 8), this.bringWindowToTop(t));
 	}
-}, mt = null;
-function ht() {
-	return process.platform === "win32" ? (mt ||= new pt(), mt) : null;
+	showChildNoActivate(e) {
+		let t = N(e);
+		this.isValidWindow(t) && this.setWindowPos(t, 0n, 0, 0, 0, 0, 83);
+	}
+	reparentPopupsToHost(e, t, n, r) {
+		let i = N(t);
+		if (!this.isValidWindow(i) || n <= 0 || r <= 0) return !1;
+		let a = 0n, o = !1;
+		for (let t = 0; t < 8; t += 1) {
+			let t = N(this.findWindowExW(0n, a, e, null));
+			if (!t) break;
+			if (a = t, N(this.getParent(t)) === i) continue;
+			let s = BigInt.asUintN(32, N(this.getWindowLongPtrW(t, ut))) & -2160328705n | 1342177280n;
+			this.setWindowLongPtrW(t, ut, s), this.setParent(t, i), this.setWindowPos(t, 0n, 0, 0, 0, 0, 55), this.moveWindow(t, 0, 0, Math.round(n), Math.round(r), !0), o = !0;
+		}
+		return this.fitChildren(i, n, r), o;
+	}
+	fitChildren(e, t, n) {
+		let r = N(e);
+		if (!this.isValidWindow(r) || t <= 0 || n <= 0) return;
+		let i = N(this.getWindow(r, ft)), a = Math.max(1, Math.round(t)), o = Math.max(1, Math.round(n));
+		for (let e = 0; i && e < 16; e += 1) this.moveWindow(i, 0, 0, a, o, !0), i = N(this.getWindow(i, dt));
+	}
+}, ht = null;
+function gt() {
+	return process.platform === "win32" ? (ht ||= new mt(), ht) : null;
 }
 //#endregion
-//#region electron/vlc-player.ts
-var gt = e(import.meta.url)("koffi"), _t = 3, M = 4, vt = 6, yt = 1.5, bt = 200, xt = {
+//#region electron/win32-video-host.ts
+var _t = e(import.meta.url)("koffi"), vt = 134217728, yt = class {
+	hwnd = 0n;
+	parentHwnd = 0n;
+	hwndAttachedToVlc = !1;
+	bounds = null;
+	createWindowExW;
+	destroyWindow;
+	getModuleHandleW;
+	win32 = gt();
+	constructor() {
+		let e = _t.load("user32.dll"), t = _t.load("kernel32.dll");
+		this.createWindowExW = e.func("CreateWindowExW", "uintptr", [
+			"long",
+			"str16",
+			"str16",
+			"ulong",
+			"int",
+			"int",
+			"int",
+			"int",
+			"uintptr",
+			"uintptr",
+			"uintptr",
+			"uintptr"
+		]), this.destroyWindow = e.func("DestroyWindow", "bool", ["uintptr"]), this.getModuleHandleW = t.func("GetModuleHandleW", "uintptr", ["void *"]);
+	}
+	get handle() {
+		return this.hwnd;
+	}
+	get currentBounds() {
+		return this.bounds;
+	}
+	isAttachedToVlc() {
+		return this.hwndAttachedToVlc;
+	}
+	markAttachedToVlc() {
+		this.hwndAttachedToVlc = !0;
+	}
+	ensure(e, t) {
+		let n = N(e), r = Math.max(1, Math.round(t.width)), i = Math.max(1, Math.round(t.height)), a = Math.round(t.x), o = Math.round(t.y);
+		if (this.hwnd && this.parentHwnd !== n && this.destroy(), !this.hwnd) {
+			let e = N(this.getModuleHandleW(null));
+			if (this.hwnd = N(this.createWindowExW(vt, "STATIC", "", 1174405120, a, o, r, i, n, 0n, e, 0n)), this.parentHwnd = n, !this.hwnd) throw Error("CreateWindowExW failed for libVLC video host");
+		}
+		return this.setBounds(t), this.hwnd;
+	}
+	setBounds(e) {
+		if (!this.hwnd || !this.win32) return;
+		let t = {
+			x: Math.round(e.x),
+			y: Math.round(e.y),
+			width: Math.max(1, Math.round(e.width)),
+			height: Math.max(1, Math.round(e.height))
+		};
+		this.bounds = t, this.win32.moveWindowRepaint(this.hwnd, t.x, t.y, t.width, t.height, !0);
+	}
+	hide() {
+		!this.hwnd || !this.win32 || this.win32.hideWindow(this.hwnd);
+	}
+	show() {
+		!this.hwnd || !this.win32 || this.win32.showChildNoActivate(this.hwnd);
+	}
+	destroy() {
+		this.hwnd && (this.destroyWindow(this.hwnd), this.hwnd = 0n, this.parentHwnd = 0n, this.bounds = null, this.hwndAttachedToVlc = !1);
+	}
+}, bt = e(import.meta.url)("koffi"), xt = 3, P = 4, F = 6, St = 1.5, Ct = 200, wt = {
 	".mp4": "mp4",
 	".m4v": "mp4",
 	".m4a": "mp4",
@@ -795,15 +904,15 @@ var gt = e(import.meta.url)("koffi"), _t = 3, M = 4, vt = 6, yt = 1.5, bt = 200,
 	".a52": "raw",
 	".dts": "raw",
 	".flac": "raw"
-}, St = new Set(_);
-function Ct(e) {
-	return St.has(d.extname(e).toLowerCase());
+}, Tt = new Set(v);
+function Et(e) {
+	return Tt.has(d.extname(e).toLowerCase());
 }
-function wt(e) {
-	return xt[d.extname(e).toLowerCase()] ?? null;
+function Dt(e) {
+	return wt[d.extname(e).toLowerCase()] ?? null;
 }
-function Tt(e, t) {
-	let n = e.replace(/\\/g, "/").replace(/["']/g, ""), r = Ct(t), i = [
+function Ot(e, t) {
+	let n = e.replace(/\\/g, "/").replace(/["']/g, ""), r = Et(t), i = [
 		":vout=dummy",
 		":aout=dummy",
 		":no-video-title-show"
@@ -813,20 +922,21 @@ function Tt(e, t) {
 		`:sout=#transcode{vcodec=h264,venc=x264{preset=ultrafast},acodec=mp4a,ab=192,channels=2,samplerate=44100}:duplicate{dst=display,dst=std{access=file,mux=mp4,dst='${n}'}}`,
 		":sout-all"
 	];
-	let a = wt(e), o = a && a !== "raw" ? `std{access=file,mux=${a},dst='${n}'}` : `std{access=file,dst='${n}'}`;
+	let a = Dt(e), o = a && a !== "raw" ? `std{access=file,mux=${a},dst='${n}'}` : `std{access=file,dst='${n}'}`;
 	return [
 		...i,
 		`:sout=#duplicate{dst=display,dst=${o}}`,
 		":sout-all"
 	];
 }
-var Et = 0, Dt = 1, Ot = 2, kt = 3, At = 4, jt = 5, Mt = class {
+var kt = 0, At = 1, jt = 2, Mt = 3, Nt = 4, Pt = 5, Ft = class {
 	instance = null;
 	mediaPlayer = null;
 	media = null;
 	equalizer = null;
-	videoWindow = null;
+	videoHost = new yt();
 	parentWindow = null;
+	embedWatch = null;
 	videoVisible = !1;
 	videoOverlaySuspended = !1;
 	endedNotified = !1;
@@ -838,7 +948,7 @@ var Et = 0, Dt = 1, Ot = 2, kt = 3, At = 4, jt = 5, Mt = class {
 	pendingVolume = 1;
 	pendingVolumeMuted = !1;
 	pendingRate = 1;
-	activeVideoEffects = { ...it };
+	activeVideoEffects = { ...nt };
 	uiOverlayPrioritized = !1;
 	lastAppliedScreenBounds = null;
 	recordingPath = null;
@@ -856,6 +966,8 @@ var Et = 0, Dt = 1, Ot = 2, kt = 3, At = 4, jt = 5, Mt = class {
 	libvlc_media_player_release;
 	libvlc_media_player_set_media;
 	libvlc_media_player_set_hwnd;
+	libvlc_video_set_mouse_input;
+	libvlc_video_set_key_input;
 	libvlc_media_player_play;
 	libvlc_media_player_set_pause;
 	libvlc_media_player_stop;
@@ -873,17 +985,17 @@ var Et = 0, Dt = 1, Ot = 2, kt = 3, At = 4, jt = 5, Mt = class {
 	libvlc_video_set_adjust_int;
 	libvlc_video_set_adjust_float;
 	libvlc_video_take_snapshot;
-	win32 = ht();
+	win32 = gt();
 	parentGeometryHandler = null;
 	parentMinimizeHandler = null;
 	parentRestoreHandler = null;
 	controlsOverlayWindow = null;
 	filesMenuOverlayWindow = null;
 	constructor() {
-		let e = rt();
+		let e = tt();
 		process.env.VLC_PLUGIN_PATH = d.join(e, "plugins"), process.env.PATH = `${e}${d.delimiter}${process.env.PATH ?? ""}`;
-		let t = gt.load(d.join(e, "libvlc.dll"));
-		this.libvlc_new = t.func("libvlc_new", "void *", ["int", "void *"]), this.libvlc_new_args = t.func("libvlc_new", "void *", ["int", "char **"]), this.libvlc_release = t.func("libvlc_release", "void", ["void *"]), this.libvlc_errmsg = t.func("libvlc_errmsg", "str", []), this.libvlc_media_new_path = t.func("libvlc_media_new_path", "void *", ["void *", "str"]), this.libvlc_media_add_option = t.func("libvlc_media_add_option", "void", ["void *", "str"]), this.libvlc_media_release = t.func("libvlc_media_release", "void", ["void *"]), this.libvlc_media_player_new = t.func("libvlc_media_player_new", "void *", ["void *"]), this.libvlc_media_player_release = t.func("libvlc_media_player_release", "void", ["void *"]), this.libvlc_media_player_set_media = t.func("libvlc_media_player_set_media", "void", ["void *", "void *"]), this.libvlc_media_player_set_hwnd = t.func("libvlc_media_player_set_hwnd", "void", ["void *", "int64"]), this.libvlc_media_player_play = t.func("libvlc_media_player_play", "int", ["void *"]), this.libvlc_media_player_set_pause = t.func("libvlc_media_player_set_pause", "void", ["void *", "int"]), this.libvlc_media_player_stop = t.func("libvlc_media_player_stop", "void", ["void *"]), this.libvlc_media_player_set_time = t.func("libvlc_media_player_set_time", "void", ["void *", "int64"]), this.libvlc_media_player_get_time = t.func("libvlc_media_player_get_time", "int64", ["void *"]), this.libvlc_media_player_get_length = t.func("libvlc_media_player_get_length", "int64", ["void *"]), this.libvlc_media_player_get_state = t.func("libvlc_media_player_get_state", "int", ["void *"]), this.libvlc_media_player_set_rate = t.func("libvlc_media_player_set_rate", "void", ["void *", "float"]), this.libvlc_audio_set_volume = t.func("libvlc_audio_set_volume", "int", ["void *", "int"]), this.libvlc_audio_equalizer_new = t.func("libvlc_audio_equalizer_new", "void *", []), this.libvlc_audio_equalizer_release = t.func("libvlc_audio_equalizer_release", "void", ["void *"]), this.libvlc_audio_equalizer_set_amp_at_index = t.func("libvlc_audio_equalizer_set_amp_at_index", "void", [
+		let t = bt.load(d.join(e, "libvlc.dll"));
+		this.libvlc_new = t.func("libvlc_new", "void *", ["int", "void *"]), this.libvlc_new_args = t.func("libvlc_new", "void *", ["int", "char **"]), this.libvlc_release = t.func("libvlc_release", "void", ["void *"]), this.libvlc_errmsg = t.func("libvlc_errmsg", "str", []), this.libvlc_media_new_path = t.func("libvlc_media_new_path", "void *", ["void *", "str"]), this.libvlc_media_add_option = t.func("libvlc_media_add_option", "void", ["void *", "str"]), this.libvlc_media_release = t.func("libvlc_media_release", "void", ["void *"]), this.libvlc_media_player_new = t.func("libvlc_media_player_new", "void *", ["void *"]), this.libvlc_media_player_release = t.func("libvlc_media_player_release", "void", ["void *"]), this.libvlc_media_player_set_media = t.func("libvlc_media_player_set_media", "void", ["void *", "void *"]), this.libvlc_media_player_set_hwnd = t.func("libvlc_media_player_set_hwnd", "void", ["void *", "void *"]), this.libvlc_video_set_mouse_input = t.func("libvlc_video_set_mouse_input", "void", ["void *", "uint"]), this.libvlc_video_set_key_input = t.func("libvlc_video_set_key_input", "void", ["void *", "uint"]), this.libvlc_media_player_play = t.func("libvlc_media_player_play", "int", ["void *"]), this.libvlc_media_player_set_pause = t.func("libvlc_media_player_set_pause", "void", ["void *", "int"]), this.libvlc_media_player_stop = t.func("libvlc_media_player_stop", "void", ["void *"]), this.libvlc_media_player_set_time = t.func("libvlc_media_player_set_time", "void", ["void *", "int64"]), this.libvlc_media_player_get_time = t.func("libvlc_media_player_get_time", "int64", ["void *"]), this.libvlc_media_player_get_length = t.func("libvlc_media_player_get_length", "int64", ["void *"]), this.libvlc_media_player_get_state = t.func("libvlc_media_player_get_state", "int", ["void *"]), this.libvlc_media_player_set_rate = t.func("libvlc_media_player_set_rate", "void", ["void *", "float"]), this.libvlc_audio_set_volume = t.func("libvlc_audio_set_volume", "int", ["void *", "int"]), this.libvlc_audio_equalizer_new = t.func("libvlc_audio_equalizer_new", "void *", []), this.libvlc_audio_equalizer_release = t.func("libvlc_audio_equalizer_release", "void", ["void *"]), this.libvlc_audio_equalizer_set_amp_at_index = t.func("libvlc_audio_equalizer_set_amp_at_index", "void", [
 			"void *",
 			"float",
 			"uint"
@@ -901,7 +1013,7 @@ var Et = 0, Dt = 1, Ot = 2, kt = 3, At = 4, jt = 5, Mt = class {
 			"str",
 			"uint",
 			"uint"
-		]), this.instance = this.libvlc_new(0, null), this.mediaPlayer = this.libvlc_media_player_new(this.instance);
+		]), this.instance = this.libvlc_new_args(2, ["--no-video-title-show", "--no-video-deco"]), this.instance ||= this.libvlc_new(0, null), this.mediaPlayer = this.libvlc_media_player_new(this.instance), this.libvlc_video_set_mouse_input(this.mediaPlayer, 0), this.libvlc_video_set_key_input(this.mediaPlayer, 0);
 	}
 	attachParent(e) {
 		this.parentWindow && !this.parentWindow.isDestroyed() && this.detachParentListeners(), this.parentWindow = e, this.parentGeometryHandler = () => {
@@ -912,7 +1024,7 @@ var Et = 0, Dt = 1, Ot = 2, kt = 3, At = 4, jt = 5, Mt = class {
 			this.applyVideoVisibility();
 		};
 		let t = this.parentGeometryHandler;
-		e.on("move", t), e.on("resize", t), e.on("maximize", t), e.on("unmaximize", t), e.on("enter-full-screen", t), e.on("leave-full-screen", t), e.on("minimize", this.parentMinimizeHandler), e.on("restore", this.parentRestoreHandler);
+		e.on("move", t), e.on("resize", t), e.on("maximize", t), e.on("unmaximize", t), e.on("enter-full-screen", t), e.on("leave-full-screen", t), e.on("minimize", this.parentMinimizeHandler), e.on("restore", this.parentRestoreHandler), this.placeVideoHost(), this.ensureEmbedWatch();
 	}
 	async prioritizeUiOverlay() {
 		return this.uiOverlayPrioritized = !0, this.hideVideoWindow(), this.takeVideoSnapshot();
@@ -982,7 +1094,7 @@ var Et = 0, Dt = 1, Ot = 2, kt = 3, At = 4, jt = 5, Mt = class {
 		return this.mediaLoaded ? this.currentFilePath : null;
 	}
 	play() {
-		this.endedNotified = !1, this.prepareVideoOutput(), this.libvlc_media_player_play(this.mediaPlayer), this.refreshEffectsAfterPipeline(), this.syncRecordingTransport("play");
+		this.endedNotified = !1, this.bindVideoDrawable(), this.prepareVideoOutput(), this.libvlc_media_player_play(this.mediaPlayer), this.claimEmbeddedVideo(), this.refreshEffectsAfterPipeline(), this.syncRecordingTransport("play");
 	}
 	pause() {
 		this.libvlc_media_player_set_pause(this.mediaPlayer, 1), this.syncRecordingTransport("pause");
@@ -1009,7 +1121,7 @@ var Et = 0, Dt = 1, Ot = 2, kt = 3, At = 4, jt = 5, Mt = class {
 	setVideoEffects(e) {
 		let t = this.activeVideoEffects;
 		if (this.activeVideoEffects = e, this.mediaLoaded) {
-			if (lt(t) || lt(e)) {
+			if (st(t) || st(e)) {
 				this.reloadMediaPreservePosition();
 				return;
 			}
@@ -1047,7 +1159,7 @@ var Et = 0, Dt = 1, Ot = 2, kt = 3, At = 4, jt = 5, Mt = class {
 				ok: !1,
 				error: this.libvlc_errmsg() ?? "Failed to open source for recording"
 			};
-			for (let t of Tt(e, this.currentFilePath)) this.libvlc_media_add_option(n, t);
+			for (let t of Ot(e, this.currentFilePath)) this.libvlc_media_add_option(n, t);
 			let r = this.libvlc_media_player_new(t);
 			if (!r) return this.libvlc_media_release(n), this.libvlc_release(t), {
 				ok: !1,
@@ -1060,7 +1172,7 @@ var Et = 0, Dt = 1, Ot = 2, kt = 3, At = 4, jt = 5, Mt = class {
 			let i = Math.max(0, Number(this.libvlc_media_player_get_time(this.mediaPlayer)));
 			i > 0 && this.libvlc_media_player_set_time(r, i);
 			let a = this.libvlc_media_player_get_state(this.mediaPlayer);
-			return (a === M || a === vt) && this.libvlc_media_player_set_pause(r, 1), this.recordingInstance = t, this.recordingPlayer = r, this.recordingMedia = n, this.recordingPath = e, this.pendingRate > 0 && this.pendingRate !== 1 && this.libvlc_media_player_set_rate(r, this.pendingRate), { ok: !0 };
+			return (a === P || a === F) && this.libvlc_media_player_set_pause(r, 1), this.recordingInstance = t, this.recordingPlayer = r, this.recordingMedia = n, this.recordingPath = e, this.pendingRate > 0 && this.pendingRate !== 1 && this.libvlc_media_player_set_rate(r, this.pendingRate), { ok: !0 };
 		} catch (e) {
 			return this.teardownRecordingPlayer(), this.recordingPath = null, console.error("Failed to start recording:", e), {
 				ok: !1,
@@ -1083,7 +1195,7 @@ var Et = 0, Dt = 1, Ot = 2, kt = 3, At = 4, jt = 5, Mt = class {
 			if (e === "seek") {
 				this.libvlc_media_player_set_time(this.recordingPlayer, t);
 				let e = this.libvlc_media_player_get_state(this.mediaPlayer);
-				(e === M || e === vt) && this.libvlc_media_player_set_pause(this.recordingPlayer, 1);
+				(e === P || e === F) && this.libvlc_media_player_set_pause(this.recordingPlayer, 1);
 				return;
 			}
 			this.libvlc_media_player_set_pause(this.recordingPlayer, 0);
@@ -1093,7 +1205,7 @@ var Et = 0, Dt = 1, Ot = 2, kt = 3, At = 4, jt = 5, Mt = class {
 		return this.recordingPath !== null;
 	}
 	getState() {
-		let e = this.libvlc_media_player_get_state(this.mediaPlayer), t = Math.max(0, Number(this.libvlc_media_player_get_time(this.mediaPlayer))), n = Math.max(0, Number(this.libvlc_media_player_get_length(this.mediaPlayer))), r = e === _t, i = e === M, a = e === vt;
+		let e = this.libvlc_media_player_get_state(this.mediaPlayer), t = Math.max(0, Number(this.libvlc_media_player_get_time(this.mediaPlayer))), n = Math.max(0, Number(this.libvlc_media_player_get_length(this.mediaPlayer))), r = e === xt, i = e === P, a = e === F;
 		return a && !this.endedNotified && (this.endedNotified = !0, this.onEnded?.()), {
 			playing: r,
 			paused: i,
@@ -1103,7 +1215,7 @@ var Et = 0, Dt = 1, Ot = 2, kt = 3, At = 4, jt = 5, Mt = class {
 		};
 	}
 	destroy() {
-		this.stop(), this.hideVideoWindow(), this.detachParentListeners(), this.videoWindow && !this.videoWindow.isDestroyed() && (this.videoWindow.destroy(), this.videoWindow = null), this.teardownRecordingPlayer(), this.media &&= (this.libvlc_media_release(this.media), null), this.equalizer &&= (this.libvlc_audio_equalizer_release(this.equalizer), null), this.mediaPlayer &&= (this.libvlc_media_player_release(this.mediaPlayer), null), this.instance &&= (this.libvlc_release(this.instance), null);
+		this.stop(), this.stopEmbedWatch(), this.hideVideoWindow(), this.detachParentListeners(), this.videoHost.destroy(), this.teardownRecordingPlayer(), this.media &&= (this.libvlc_media_release(this.media), null), this.equalizer &&= (this.libvlc_audio_equalizer_release(this.equalizer), null), this.mediaPlayer &&= (this.libvlc_media_player_release(this.mediaPlayer), null), this.instance &&= (this.libvlc_release(this.instance), null);
 	}
 	applyPendingEffects() {
 		this.applyVolumeSettings(), this.pendingAudioEffects && this.applyAudioEffects(this.pendingAudioEffects), this.applyVideoAdjust(this.activeVideoEffects);
@@ -1115,7 +1227,7 @@ var Et = 0, Dt = 1, Ot = 2, kt = 3, At = 4, jt = 5, Mt = class {
 		}, e);
 	}
 	reapplyAudioEffectsIfActive() {
-		this.pendingAudioEffects && !A(this.pendingAudioEffects) && this.applyAudioEffects(this.pendingAudioEffects);
+		this.pendingAudioEffects && !M(this.pendingAudioEffects) && this.applyAudioEffects(this.pendingAudioEffects);
 	}
 	applyVolumeSettings() {
 		if (this.pendingVolumeMuted) {
@@ -1127,13 +1239,13 @@ var Et = 0, Dt = 1, Ot = 2, kt = 3, At = 4, jt = 5, Mt = class {
 			this.libvlc_audio_set_volume(this.mediaPlayer, this.uiVolumeToLibVlcVolume(e)), this.clearVolumeBoostEqualizer(), this.reapplyAudioEffectsIfActive();
 			return;
 		}
-		this.libvlc_audio_set_volume(this.mediaPlayer, bt), this.applyVolumeBoostEqualizer(e);
+		this.libvlc_audio_set_volume(this.mediaPlayer, Ct), this.applyVolumeBoostEqualizer(e);
 	}
 	uiVolumeToLibVlcVolume(e) {
-		return Math.min(bt, Math.round(e * 100 * yt));
+		return Math.min(Ct, Math.round(e * 100 * St));
 	}
 	clearVolumeBoostEqualizer() {
-		(!this.pendingAudioEffects || A(this.pendingAudioEffects)) && this.libvlc_media_player_set_equalizer(this.mediaPlayer, null);
+		(!this.pendingAudioEffects || M(this.pendingAudioEffects)) && this.libvlc_media_player_set_equalizer(this.mediaPlayer, null);
 	}
 	applyVolumeBoostEqualizer(e) {
 		let t = Math.min(20, Math.max(-20, 20 * Math.log10(e) + 6.02));
@@ -1142,12 +1254,12 @@ var Et = 0, Dt = 1, Ot = 2, kt = 3, At = 4, jt = 5, Mt = class {
 		this.libvlc_media_player_set_equalizer(this.mediaPlayer, this.equalizer);
 	}
 	applyAudioEffects(e) {
-		if (A(e)) {
+		if (M(e)) {
 			this.libvlc_media_player_set_equalizer(this.mediaPlayer, null);
 			return;
 		}
 		if (this.equalizer ||= this.libvlc_audio_equalizer_new(), this.equalizer) {
-			this.libvlc_audio_equalizer_set_preamp(this.equalizer, ot(e.outputGain));
+			this.libvlc_audio_equalizer_set_preamp(this.equalizer, it(e.outputGain));
 			for (let t = 0; t < 10; t += 1) {
 				let n = e.bands[t] ?? 0;
 				this.libvlc_audio_equalizer_set_amp_at_index(this.equalizer, n, t);
@@ -1156,24 +1268,24 @@ var Et = 0, Dt = 1, Ot = 2, kt = 3, At = 4, jt = 5, Mt = class {
 		}
 	}
 	applyVideoAdjust(e) {
-		let t = ct(e);
-		this.libvlc_video_set_adjust_int(this.mediaPlayer, Et, +!!t.enabled), t.enabled && (this.libvlc_video_set_adjust_float(this.mediaPlayer, Ot, t.brightness), this.libvlc_video_set_adjust_float(this.mediaPlayer, Dt, t.contrast), this.libvlc_video_set_adjust_float(this.mediaPlayer, At, t.saturation), this.libvlc_video_set_adjust_float(this.mediaPlayer, kt, t.hue), this.libvlc_video_set_adjust_float(this.mediaPlayer, jt, t.gamma));
+		let t = ot(e);
+		this.libvlc_video_set_adjust_int(this.mediaPlayer, kt, +!!t.enabled), t.enabled && (this.libvlc_video_set_adjust_float(this.mediaPlayer, jt, t.brightness), this.libvlc_video_set_adjust_float(this.mediaPlayer, At, t.contrast), this.libvlc_video_set_adjust_float(this.mediaPlayer, Nt, t.saturation), this.libvlc_video_set_adjust_float(this.mediaPlayer, Mt, t.hue), this.libvlc_video_set_adjust_float(this.mediaPlayer, Pt, t.gamma));
 	}
 	createMedia(e, t) {
 		let n = this.libvlc_media_new_path(this.instance, e);
 		if (!n) return null;
-		for (let e of ut(t)) this.libvlc_media_add_option(n, e);
+		for (let e of ct(t)) this.libvlc_media_add_option(n, e);
 		return n;
 	}
 	reloadMediaPreservePosition() {
 		if (!this.currentFilePath || !this.mediaLoaded) return;
-		let e = Math.max(0, Number(this.libvlc_media_player_get_time(this.mediaPlayer))), t = this.libvlc_media_player_get_state(this.mediaPlayer), n = t === _t || t === M;
+		let e = Math.max(0, Number(this.libvlc_media_player_get_time(this.mediaPlayer))), t = this.libvlc_media_player_get_state(this.mediaPlayer), n = t === xt || t === P;
 		if (this.libvlc_media_player_stop(this.mediaPlayer), this.media &&= (this.libvlc_media_release(this.media), null), this.media = this.createMedia(this.currentFilePath, this.activeVideoEffects), !this.media) {
 			this.mediaLoaded = !1;
 			return;
 		}
 		if (this.libvlc_media_player_set_media(this.mediaPlayer, this.media), e > 0 && this.libvlc_media_player_set_time(this.mediaPlayer, e), n) {
-			this.prepareVideoOutput(), this.libvlc_media_player_play(this.mediaPlayer), this.refreshEffectsAfterPipeline();
+			this.bindVideoDrawable(), this.prepareVideoOutput(), this.libvlc_media_player_play(this.mediaPlayer), this.claimEmbeddedVideo(), this.refreshEffectsAfterPipeline();
 			return;
 		}
 		this.applyPendingEffects();
@@ -1192,54 +1304,79 @@ var Et = 0, Dt = 1, Ot = 2, kt = 3, At = 4, jt = 5, Mt = class {
 		this.lastAppliedScreenBounds = null, this.lastViewport && this.videoVisible && !this.videoOverlaySuspended && this.applyViewport(this.lastViewport), !(!this.parentWindow || this.parentWindow.isDestroyed()) && this.parentWindow.webContents.send("vlc:parent-geometry-changed");
 	}
 	applyViewport(e) {
-		if (!this.parentWindow || !this.videoVisible || this.videoOverlaySuspended) return;
-		let t = this.parentWindow.getContentBounds(), n = Math.round(t.x + e.x), r = Math.round(t.y + e.y), i = Math.max(1, Math.round(e.width)), a = Math.max(1, Math.round(e.height)), o = this.lastAppliedScreenBounds;
-		if (o && o.x === n && o.y === r && o.width === i && o.height === a) return;
-		this.lastAppliedScreenBounds = {
-			x: n,
-			y: r,
-			width: i,
-			height: a
-		};
-		let s = this.ensureVideoWindow();
-		if (!s) return;
-		let l = !s.isVisible();
-		if (process.platform === "win32" && this.win32) {
-			let e = c.dipToScreenRect(this.parentWindow, {
-				x: n,
-				y: r,
-				width: i,
-				height: a
-			}), t = ft(s.getNativeWindowHandle());
-			this.win32.positionWindow(t, e.x, e.y, e.width, e.height, l);
-		} else s.setBounds({
-			x: n,
-			y: r,
-			width: i,
-			height: a
-		});
-		if (this.uiOverlayPrioritized) {
+		if (!this.parentWindow || !this.videoVisible || this.videoOverlaySuspended || process.platform !== "win32" || !this.win32) return;
+		let t = this.viewportToClientPixels(e), n = this.lastAppliedScreenBounds;
+		if (n && n.x === t.x && n.y === t.y && n.width === t.width && n.height === t.height) {
+			this.videoHost.show(), this.raiseControlsOverlay();
+			return;
+		}
+		if (this.lastAppliedScreenBounds = t, this.placeVideoHost(t), this.uiOverlayPrioritized) {
 			this.hideVideoWindow();
 			return;
 		}
-		if (l) {
-			let e = s.getNativeWindowHandle();
-			this.libvlc_media_player_set_hwnd(this.mediaPlayer, j(e)), process.platform !== "win32" && s.showInactive(), this.applyPendingEffects(), this.sendVideoWindowAboveUi();
-		}
+		this.videoHost.show(), this.claimEmbeddedVideo(), this.applyPendingEffects(), this.raiseControlsOverlay();
+	}
+	viewportToClientPixels(e) {
+		let t = this.parentWindow;
+		if (!t) return {
+			x: Math.round(e.x),
+			y: Math.round(e.y),
+			width: Math.max(1, Math.round(e.width)),
+			height: Math.max(1, Math.round(e.height))
+		};
+		let n = t.getContentBounds(), r = c.dipToScreenRect(t, {
+			x: Math.round(n.x + e.x),
+			y: Math.round(n.y + e.y),
+			width: Math.max(1, Math.round(e.width)),
+			height: Math.max(1, Math.round(e.height))
+		}), i = c.dipToScreenRect(t, {
+			x: n.x,
+			y: n.y,
+			width: 1,
+			height: 1
+		});
+		return {
+			x: r.x - i.x,
+			y: r.y - i.y,
+			width: Math.max(1, r.width),
+			height: Math.max(1, r.height)
+		};
+	}
+	placeVideoHost(e) {
+		if (!this.parentWindow || this.parentWindow.isDestroyed() || process.platform !== "win32") return;
+		let t = pt(this.parentWindow.getNativeWindowHandle()), n = e ?? this.videoHost.currentBounds ?? {
+			x: 0,
+			y: 0,
+			width: 1,
+			height: 1
+		}, r = this.videoHost.ensure(t, n);
+		this.videoHost.isAttachedToVlc() || this.attachDrawable(r);
+	}
+	bindVideoDrawable(e) {
+		this.placeVideoHost(e), this.videoHost.handle && this.attachDrawable(this.videoHost.handle);
+	}
+	attachDrawable(e) {
+		this.libvlc_media_player_set_hwnd(this.mediaPlayer, e), this.libvlc_video_set_mouse_input(this.mediaPlayer, 0), this.libvlc_video_set_key_input(this.mediaPlayer, 0), this.videoHost.markAttachedToVlc();
+	}
+	claimEmbeddedVideo() {
+		if (!this.win32) return;
+		let e = this.videoHost.currentBounds, t = this.videoHost.handle;
+		!e || !t || (this.videoVisible && !this.videoOverlaySuspended && !this.uiOverlayPrioritized && this.videoHost.show(), this.win32.reparentPopupsToHost("VLC video output", t, e.width, e.height) && this.raiseControlsOverlay());
+	}
+	ensureEmbedWatch() {
+		this.embedWatch || process.platform !== "win32" || (this.embedWatch = setInterval(() => this.claimEmbeddedVideo(), 400));
+	}
+	stopEmbedWatch() {
+		this.embedWatch &&= (clearInterval(this.embedWatch), null);
 	}
 	async takeVideoSnapshot() {
 		if (!this.mediaLoaded || !this.mediaPlayer) return null;
 		try {
 			let e = d.join(r.getPath("temp"), "fmp-media-player", "vlc-menu-preview.png");
-			return await f.mkdir(d.dirname(e), { recursive: !0 }), this.libvlc_video_take_snapshot(this.mediaPlayer, 0, e, 0, 0) === 0 ? e : null;
+			return await p.mkdir(d.dirname(e), { recursive: !0 }), this.libvlc_video_take_snapshot(this.mediaPlayer, 0, e, 0, 0) === 0 ? e : null;
 		} catch (e) {
 			return console.warn("Failed to capture VLC menu preview:", e), null;
 		}
-	}
-	sendVideoWindowAboveUi() {
-		if (!this.win32 || !this.videoWindow || this.videoWindow.isDestroyed()) return;
-		let e = ft(this.videoWindow.getNativeWindowHandle());
-		this.win32.setWindowPosFlags(e, 0, 0, 0, 0, 0, 19), this.videoWindow.isDestroyed() || this.videoWindow.moveTop(), this.raiseControlsOverlay();
 	}
 	detachParentListeners() {
 		if (!(!this.parentWindow || this.parentWindow.isDestroyed())) {
@@ -1250,44 +1387,19 @@ var Et = 0, Dt = 1, Ot = 2, kt = 3, At = 4, jt = 5, Mt = class {
 			this.parentMinimizeHandler && this.parentWindow.removeListener("minimize", this.parentMinimizeHandler), this.parentRestoreHandler && this.parentWindow.removeListener("restore", this.parentRestoreHandler), this.parentGeometryHandler = null, this.parentMinimizeHandler = null, this.parentRestoreHandler = null, this.parentWindow = null;
 		}
 	}
-	ensureVideoWindow() {
-		if (!this.parentWindow) return null;
-		if (!this.videoWindow || this.videoWindow.isDestroyed()) {
-			this.videoWindow = new t({
-				parent: this.parentWindow,
-				frame: !1,
-				show: !1,
-				skipTaskbar: !0,
-				resizable: !0,
-				minWidth: 1,
-				minHeight: 1,
-				focusable: !1,
-				hasShadow: !1,
-				thickFrame: !1,
-				backgroundColor: "#000000",
-				webPreferences: {
-					nodeIntegration: !1,
-					contextIsolation: !0
-				}
-			}), this.videoWindow.setIgnoreMouseEvents(!0, { forward: !0 });
-			let e = this.videoWindow.getNativeWindowHandle();
-			this.libvlc_media_player_set_hwnd(this.mediaPlayer, j(e));
-		}
-		return this.videoWindow;
-	}
 	hideVideoWindow() {
-		this.lastAppliedScreenBounds = null, this.videoWindow && !this.videoWindow.isDestroyed() && this.videoWindow.hide();
+		this.lastAppliedScreenBounds = null, this.videoHost.hide();
 	}
-}, Nt = new Set(g);
-function Pt(e) {
-	return Nt.has(d.extname(e).toLowerCase());
+}, It = new Set(_);
+function Lt(e) {
+	return It.has(d.extname(e).toLowerCase());
 }
-function Ft(e, t) {
+function Rt(e, t) {
 	return (e[t] & 127) << 21 | (e[t + 1] & 127) << 14 | (e[t + 2] & 127) << 7 | e[t + 3] & 127;
 }
-function It(e) {
+function zt(e) {
 	if (e.length < 10 || e.toString("ascii", 0, 3) !== "ID3") return null;
-	let t = e[3], n = Ft(e, 6), r = 10, i = Math.min(e.length, 10 + n);
+	let t = e[3], n = Rt(e, 6), r = 10, i = Math.min(e.length, 10 + n);
 	for (; r < i;) {
 		let n, a, o;
 		if (t === 2) {
@@ -1295,7 +1407,7 @@ function It(e) {
 			n = e.toString("ascii", r, r + 3), a = e[r + 3] << 16 | e[r + 4] << 8 | e[r + 5], o = r + 6;
 		} else {
 			if (r + 10 > i) break;
-			n = e.toString("ascii", r, r + 4).replace(/\0/g, ""), a = t === 4 ? Ft(e, r + 4) : e.readUInt32BE(r + 4), o = r + 10;
+			n = e.toString("ascii", r, r + 4).replace(/\0/g, ""), a = t === 4 ? Rt(e, r + 4) : e.readUInt32BE(r + 4), o = r + 10;
 		}
 		let s = o + a;
 		if (s > e.length) break;
@@ -1318,7 +1430,7 @@ function It(e) {
 	}
 	return null;
 }
-function Lt(e) {
+function Bt(e) {
 	let t = 0;
 	for (; t < e.length;) {
 		let n = e.indexOf("covr", t);
@@ -1345,7 +1457,7 @@ function Lt(e) {
 	}
 	return null;
 }
-function Rt(e) {
+function Vt(e) {
 	if (e.length < 8 || e.toString("ascii", 0, 4) !== "fLaC") return null;
 	let t = 4;
 	for (; t + 4 <= e.length;) {
@@ -1365,10 +1477,10 @@ function Rt(e) {
 	}
 	return null;
 }
-function zt(e) {
-	return Lt(e);
+function Ht(e) {
+	return Bt(e);
 }
-function Bt(e, t) {
+function Ut(e, t) {
 	if (!e.length) return null;
 	let n = o.createFromBuffer(e);
 	if (n.isEmpty()) return null;
@@ -1382,16 +1494,16 @@ function Bt(e, t) {
 		height: a.height
 	};
 }
-async function Vt(e, t = 320) {
-	if (!Pt(e)) return null;
+async function Wt(e, t = 320) {
+	if (!Lt(e)) return null;
 	try {
-		let n = await f.readFile(e), r = d.extname(e).toLowerCase(), i = null;
-		return i = r === ".mp3" || r === ".mp2" || r === ".mp1" || r === ".mpga" ? It(n) : r === ".flac" ? Rt(n) : r === ".m4a" || r === ".m4b" || r === ".m4p" || r === ".mp4" ? zt(n) : It(n), i ? Bt(i, t) : null;
+		let n = await p.readFile(e), r = d.extname(e).toLowerCase(), i = null;
+		return i = r === ".mp3" || r === ".mp2" || r === ".mp1" || r === ".mpga" ? zt(n) : r === ".flac" ? Vt(n) : r === ".m4a" || r === ".m4b" || r === ".m4p" || r === ".mp4" ? Ht(n) : zt(n), i ? Ut(i, t) : null;
 	} catch {
 		return null;
 	}
 }
-async function Ht(e, t = 320) {
+async function Gt(e, t = 320) {
 	if (!e) return null;
 	let n = e;
 	if (n.startsWith("file://")) try {
@@ -1401,14 +1513,14 @@ async function Ht(e, t = 320) {
 	}
 	if (!d.isAbsolute(n)) return null;
 	try {
-		return Bt(await f.readFile(n), t);
+		return Ut(await p.readFile(n), t);
 	} catch {
 		return null;
 	}
 }
 //#endregion
 //#region electron/media-probe.ts
-var N = e(import.meta.url)("koffi"), Ut = 3, Wt = 7, Gt = 0, Kt = 2, qt = 3, Jt = 4, Yt = 0, Xt = 1, Zt = 2, P = {
+var I = e(import.meta.url)("koffi"), Kt = 3, qt = 7, Jt = 0, Yt = 2, Xt = 3, Zt = 4, Qt = 0, $t = 1, en = 2, L = {
 	title: 0,
 	artist: 1,
 	genre: 2,
@@ -1432,17 +1544,17 @@ var N = e(import.meta.url)("koffi"), Ut = 3, Wt = 7, Gt = 0, Kt = 2, qt = 3, Jt 
 	actors: 22,
 	albumArtist: 23,
 	discNumber: 24
-}, Qt = N.struct({
+}, tn = I.struct({
 	i_channels: "uint",
 	i_rate: "uint"
-}), $t = N.struct({
+}), nn = I.struct({
 	i_height: "uint",
 	i_width: "uint",
 	i_sar_num: "uint",
 	i_sar_den: "uint",
 	i_frame_rate_num: "uint",
 	i_frame_rate_den: "uint"
-}), en = N.struct({ psz_encoding: "str" }), tn = N.struct({
+}), rn = I.struct({ psz_encoding: "str" }), an = I.struct({
 	i_codec: "uint32",
 	i_original_fourcc: "uint32",
 	i_id: "int",
@@ -1454,10 +1566,10 @@ var N = e(import.meta.url)("koffi"), Ut = 3, Wt = 7, Gt = 0, Kt = 2, qt = 3, Jt 
 	psz_language: "str",
 	psz_description: "str"
 });
-function F(e) {
+function R(e) {
 	return new Promise((t) => setTimeout(t, e));
 }
-function I(e) {
+function on(e) {
 	if (!e) return null;
 	let t = [
 		e & 255,
@@ -1467,15 +1579,15 @@ function I(e) {
 	].map((e) => e >= 32 && e < 127 ? String.fromCharCode(e) : "").join("").trim();
 	return t.length ? t : null;
 }
-function L(e) {
+function z(e) {
 	if (typeof e != "string") return null;
 	let t = e.trim();
 	return t.length ? t : null;
 }
-function nn(e, t, n) {
+function sn(e, t, n) {
 	return Number.isFinite(e) ? Math.min(n, Math.max(t, e)) : t;
 }
-var rn = class {
+var cn = class {
 	instance;
 	libvlc_new;
 	libvlc_release;
@@ -1501,14 +1613,14 @@ var rn = class {
 	libvlc_audio_set_volume;
 	libvlc_video_take_snapshot;
 	constructor() {
-		let e = rt();
+		let e = tt();
 		process.env.VLC_PLUGIN_PATH = d.join(e, "plugins"), process.env.PATH = `${e}${d.delimiter}${process.env.PATH ?? ""}`;
-		let t = N.load(d.join(e, "libvlc.dll"));
+		let t = I.load(d.join(e, "libvlc.dll"));
 		this.libvlc_new = t.func("libvlc_new", "void *", ["int", "void *"]), this.libvlc_release = t.func("libvlc_release", "void", ["void *"]), this.libvlc_media_new_path = t.func("libvlc_media_new_path", "void *", ["void *", "str"]), this.libvlc_media_add_option = t.func("libvlc_media_add_option", "void", ["void *", "str"]), this.libvlc_media_release = t.func("libvlc_media_release", "void", ["void *"]), this.libvlc_media_parse_with_options = t.func("libvlc_media_parse_with_options", "int", [
 			"void *",
 			"int",
 			"int"
-		]), this.libvlc_media_get_parsed_status = t.func("libvlc_media_get_parsed_status", "int", ["void *"]), this.libvlc_media_get_meta = t.func("libvlc_media_get_meta", "void *", ["void *", "int"]), this.libvlc_media_get_duration = t.func("libvlc_media_get_duration", "int64", ["void *"]), this.libvlc_media_tracks_get = t.func("libvlc_media_tracks_get", "uint", ["void *", N.out(N.pointer("void *"))]), this.libvlc_media_tracks_release = t.func("libvlc_media_tracks_release", "void", ["void *", "uint"]), this.libvlc_free = t.func("libvlc_free", "void", ["void *"]), this.libvlc_media_player_new = t.func("libvlc_media_player_new", "void *", ["void *"]), this.libvlc_media_player_release = t.func("libvlc_media_player_release", "void", ["void *"]), this.libvlc_media_player_set_media = t.func("libvlc_media_player_set_media", "void", ["void *", "void *"]), this.libvlc_media_player_set_hwnd = t.func("libvlc_media_player_set_hwnd", "void", ["void *", "int64"]), this.libvlc_media_player_play = t.func("libvlc_media_player_play", "int", ["void *"]), this.libvlc_media_player_stop = t.func("libvlc_media_player_stop", "void", ["void *"]), this.libvlc_media_player_set_time = t.func("libvlc_media_player_set_time", "void", ["void *", "int64"]), this.libvlc_media_player_get_length = t.func("libvlc_media_player_get_length", "int64", ["void *"]), this.libvlc_media_player_get_state = t.func("libvlc_media_player_get_state", "int", ["void *"]), this.libvlc_audio_set_volume = t.func("libvlc_audio_set_volume", "int", ["void *", "int"]), this.libvlc_video_take_snapshot = t.func("libvlc_video_take_snapshot", "int", [
+		]), this.libvlc_media_get_parsed_status = t.func("libvlc_media_get_parsed_status", "int", ["void *"]), this.libvlc_media_get_meta = t.func("libvlc_media_get_meta", "void *", ["void *", "int"]), this.libvlc_media_get_duration = t.func("libvlc_media_get_duration", "int64", ["void *"]), this.libvlc_media_tracks_get = t.func("libvlc_media_tracks_get", "uint", ["void *", I.out(I.pointer("void *"))]), this.libvlc_media_tracks_release = t.func("libvlc_media_tracks_release", "void", ["void *", "uint"]), this.libvlc_free = t.func("libvlc_free", "void", ["void *"]), this.libvlc_media_player_new = t.func("libvlc_media_player_new", "void *", ["void *"]), this.libvlc_media_player_release = t.func("libvlc_media_player_release", "void", ["void *"]), this.libvlc_media_player_set_media = t.func("libvlc_media_player_set_media", "void", ["void *", "void *"]), this.libvlc_media_player_set_hwnd = t.func("libvlc_media_player_set_hwnd", "void", ["void *", "void *"]), this.libvlc_media_player_play = t.func("libvlc_media_player_play", "int", ["void *"]), this.libvlc_media_player_stop = t.func("libvlc_media_player_stop", "void", ["void *"]), this.libvlc_media_player_set_time = t.func("libvlc_media_player_set_time", "void", ["void *", "int64"]), this.libvlc_media_player_get_length = t.func("libvlc_media_player_get_length", "int64", ["void *"]), this.libvlc_media_player_get_state = t.func("libvlc_media_player_get_state", "int", ["void *"]), this.libvlc_audio_set_volume = t.func("libvlc_audio_set_volume", "int", ["void *", "int"]), this.libvlc_video_take_snapshot = t.func("libvlc_video_take_snapshot", "int", [
 			"void *",
 			"uint",
 			"str",
@@ -1522,29 +1634,29 @@ var rn = class {
 		try {
 			return await this.parseMedia(t), {
 				filePath: e,
-				title: this.getMeta(t, P.title),
-				artist: this.getMeta(t, P.artist),
-				album: this.getMeta(t, P.album),
-				albumArtist: this.getMeta(t, P.albumArtist),
-				genre: this.getMeta(t, P.genre),
-				description: this.getMeta(t, P.description),
-				date: this.getMeta(t, P.date),
-				trackNumber: this.getMeta(t, P.trackNumber),
-				trackTotal: this.getMeta(t, P.trackTotal),
-				discNumber: this.getMeta(t, P.discNumber),
-				copyright: this.getMeta(t, P.copyright),
-				publisher: this.getMeta(t, P.publisher),
-				encodedBy: this.getMeta(t, P.encodedBy),
-				language: this.getMeta(t, P.language),
-				nowPlaying: this.getMeta(t, P.nowPlaying),
-				showName: this.getMeta(t, P.showName),
-				season: this.getMeta(t, P.season),
-				episode: this.getMeta(t, P.episode),
-				director: this.getMeta(t, P.director),
-				actors: this.getMeta(t, P.actors),
-				rating: this.getMeta(t, P.rating),
-				url: this.getMeta(t, P.url),
-				artworkUrl: this.getMeta(t, P.artworkUrl),
+				title: this.getMeta(t, L.title),
+				artist: this.getMeta(t, L.artist),
+				album: this.getMeta(t, L.album),
+				albumArtist: this.getMeta(t, L.albumArtist),
+				genre: this.getMeta(t, L.genre),
+				description: this.getMeta(t, L.description),
+				date: this.getMeta(t, L.date),
+				trackNumber: this.getMeta(t, L.trackNumber),
+				trackTotal: this.getMeta(t, L.trackTotal),
+				discNumber: this.getMeta(t, L.discNumber),
+				copyright: this.getMeta(t, L.copyright),
+				publisher: this.getMeta(t, L.publisher),
+				encodedBy: this.getMeta(t, L.encodedBy),
+				language: this.getMeta(t, L.language),
+				nowPlaying: this.getMeta(t, L.nowPlaying),
+				showName: this.getMeta(t, L.showName),
+				season: this.getMeta(t, L.season),
+				episode: this.getMeta(t, L.episode),
+				director: this.getMeta(t, L.director),
+				actors: this.getMeta(t, L.actors),
+				rating: this.getMeta(t, L.rating),
+				url: this.getMeta(t, L.url),
+				artworkUrl: this.getMeta(t, L.artworkUrl),
 				durationMs: Math.max(0, Number(this.libvlc_media_get_duration(t)))
 			};
 		} finally {
@@ -1561,16 +1673,16 @@ var rn = class {
 		}
 	}
 	async extractThumbnail(e, t = {}) {
-		let n = Math.round(nn(t.width ?? 320, 16, 1920)), r = this.libvlc_media_new_path(this.instance, e);
+		let n = Math.round(sn(t.width ?? 320, 16, 1920)), r = this.libvlc_media_new_path(this.instance, e);
 		if (!r) return null;
 		try {
 			await this.parseMedia(r);
-			let i = await Ht(this.getMeta(r, P.artworkUrl), n);
+			let i = await Gt(this.getMeta(r, L.artworkUrl), n);
 			if (i) return {
 				filePath: e,
 				...i
 			};
-			let a = await Vt(e, n);
+			let a = await Wt(e, n);
 			return a ? {
 				filePath: e,
 				...a
@@ -1599,22 +1711,22 @@ var rn = class {
 					contextIsolation: !0
 				}
 			}), c.setIgnoreMouseEvents(!0);
-			let l = j(c.getNativeWindowHandle());
+			let l = pt(c.getNativeWindowHandle());
 			if (this.libvlc_media_player_set_hwnd(s, l), c.showInactive(), this.libvlc_audio_set_volume(s, 0), this.libvlc_media_player_play(s) !== 0 || !await this.waitForPlaying(s, 5e3)) return null;
-			let u = Math.max(0, Number(this.libvlc_media_player_get_length(s))), ee = typeof a.timeMs == "number" ? nn(a.timeMs, 0, u > 0 ? u : a.timeMs) : u > 1500 ? Math.min(u - 500, Math.max(1e3, Math.floor(u * .1))) : 0;
-			ee > 0 && this.libvlc_media_player_set_time(s, ee), await F(900);
-			let p = d.join(r.getPath("temp"), "fmp-media-player", "probe");
-			await f.mkdir(p, { recursive: !0 });
-			let m = d.join(p, `thumb-${Date.now()}-${Math.random().toString(36).slice(2)}.png`), h = this.libvlc_video_take_snapshot(s, 0, m, i, 0);
-			if (h !== 0 && (await F(500), h = this.libvlc_video_take_snapshot(s, 0, m, i, 0)), h !== 0) return null;
-			let g = o.createFromPath(m);
-			if (await f.rm(m, { force: !0 }), g.isEmpty()) return null;
-			let _ = g.getSize();
+			let u = Math.max(0, Number(this.libvlc_media_player_get_length(s))), f = typeof a.timeMs == "number" ? sn(a.timeMs, 0, u > 0 ? u : a.timeMs) : u > 1500 ? Math.min(u - 500, Math.max(1e3, Math.floor(u * .1))) : 0;
+			f > 0 && this.libvlc_media_player_set_time(s, f), await R(900);
+			let m = d.join(r.getPath("temp"), "fmp-media-player", "probe");
+			await p.mkdir(m, { recursive: !0 });
+			let h = d.join(m, `thumb-${Date.now()}-${Math.random().toString(36).slice(2)}.png`), g = this.libvlc_video_take_snapshot(s, 0, h, i, 0);
+			if (g !== 0 && (await R(500), g = this.libvlc_video_take_snapshot(s, 0, h, i, 0)), g !== 0) return null;
+			let _ = o.createFromPath(h);
+			if (await p.rm(h, { force: !0 }), _.isEmpty()) return null;
+			let v = _.getSize();
 			return {
 				filePath: n,
-				dataUrl: g.toDataURL(),
-				width: _.width,
-				height: _.height
+				dataUrl: _.toDataURL(),
+				width: v.width,
+				height: v.height
 			};
 		} catch (e) {
 			return console.warn("media-probe: thumbnail extraction failed:", e), null;
@@ -1632,13 +1744,13 @@ var rn = class {
 		this.instance &&= (this.libvlc_release(this.instance), null);
 	}
 	async parseMedia(e) {
-		if (this.libvlc_media_parse_with_options(e, Gt, 5e3) !== 0) return !1;
+		if (this.libvlc_media_parse_with_options(e, Jt, 5e3) !== 0) return !1;
 		let t = Date.now() + 6e3;
 		for (; Date.now() < t;) {
 			let t = this.libvlc_media_get_parsed_status(e);
-			if (t === Jt) return !0;
-			if (t === Kt || t === qt) return !1;
-			await F(25);
+			if (t === Zt) return !0;
+			if (t === Yt || t === Xt) return !1;
+			await R(25);
 		}
 		return !1;
 	}
@@ -1646,7 +1758,7 @@ var rn = class {
 		let n = this.libvlc_media_get_meta(e, t);
 		if (!n) return null;
 		try {
-			return L(N.decode.string(n));
+			return z(I.decode.string(n));
 		} finally {
 			this.libvlc_free(n);
 		}
@@ -1656,29 +1768,29 @@ var rn = class {
 		if (!n || !r) return [];
 		let i = [];
 		try {
-			let e = N.decode(r, N.array("void *", n));
+			let e = I.decode(r, I.array("void *", n));
 			for (let t = 0; t < n; t += 1) {
 				let n = e[t];
 				if (!n) continue;
-				let r = N.decode(n, tn), a = r.i_type === Yt ? "audio" : r.i_type === Xt ? "video" : r.i_type === Zt ? "subtitle" : "unknown", o = {
+				let r = I.decode(n, an), a = r.i_type === Qt ? "audio" : r.i_type === $t ? "video" : r.i_type === en ? "subtitle" : "unknown", o = {
 					id: r.i_id,
 					kind: a,
-					codec: I(r.i_codec),
-					codecFourcc: I(r.i_codec),
-					originalFourcc: I(r.i_original_fourcc),
+					codec: on(r.i_codec),
+					codecFourcc: on(r.i_codec),
+					originalFourcc: on(r.i_original_fourcc),
 					bitrate: r.i_bitrate >>> 0,
 					profile: r.i_profile,
 					level: r.i_level,
-					language: L(r.psz_language),
-					description: L(r.psz_description)
+					language: z(r.psz_language),
+					description: z(r.psz_description)
 				};
 				if (a === "audio" && r.media) {
-					let e = N.decode(r.media, Qt);
+					let e = I.decode(r.media, tn);
 					o.channels = e.i_channels, o.sampleRate = e.i_rate;
 				} else if (a === "video" && r.media) {
-					let e = N.decode(r.media, $t);
+					let e = I.decode(r.media, nn);
 					o.width = e.i_width, o.height = e.i_height, o.frameRate = e.i_frame_rate_den ? Math.round(e.i_frame_rate_num / e.i_frame_rate_den * 1e3) / 1e3 : 0, o.sampleAspectRatio = e.i_sar_den ? `${e.i_sar_num}:${e.i_sar_den}` : void 0;
-				} else a === "subtitle" && r.media && (o.encoding = L(N.decode(r.media, en).psz_encoding));
+				} else a === "subtitle" && r.media && (o.encoding = z(I.decode(r.media, rn).psz_encoding));
 				i.push(o);
 			}
 		} finally {
@@ -1690,156 +1802,156 @@ var rn = class {
 		let n = Date.now() + t;
 		for (; Date.now() < n;) {
 			let t = this.libvlc_media_player_get_state(e);
-			if (t === Ut) return !0;
-			if (t === Wt) return !1;
-			await F(30);
+			if (t === Kt) return !0;
+			if (t === qt) return !1;
+			await R(30);
 		}
 		return !1;
 	}
-}, an = null;
-function R() {
-	return an ||= new rn(), an;
+}, ln = null;
+function un() {
+	return ln ||= new cn(), ln;
 }
 //#endregion
 //#region electron/main.ts
-var z = d.dirname(h(import.meta.url)), on = !r.isPackaged, B = d.join(z, "../dist/index.html"), V = null, H = null, U = null, W = !1, G = !1, sn = null, K = null, q = null, J = !1, Y = oe(process.argv);
+var B = d.dirname(g(import.meta.url)), dn = !r.isPackaged, V = d.join(B, "../dist/index.html"), H = null, U = null, W = null, G = !1, K = !1, fn = null, q = null, J = null, Y = !1, pn = ae(process.argv);
 r.setAppUserModelId("com.fmp.videoplayer");
-var cn = r.requestSingleInstanceLock();
-cn ? r.on("second-instance", (e, t) => {
-	let n = oe(t);
-	n.length > 0 && (Y = n), !(!V || V.isDestroyed()) && (V.isMinimized() && V.restore(), V.show(), V.focus(), n.length > 0 && V.webContents.send("app:open-files", n));
+var mn = r.requestSingleInstanceLock();
+mn ? r.on("second-instance", (e, t) => {
+	let n = ae(t);
+	n.length > 0 && (pn = n), !(!H || H.isDestroyed()) && (H.isMinimized() && H.restore(), H.show(), H.focus(), n.length > 0 && H.webContents.send("app:open-files", n));
 }) : r.quit();
 async function X(e) {
-	let t = !!(H && !H.isDestroyed() && H.isVisible()), n = !!(U && !U.isDestroyed() && U.isVisible());
-	t && H?.hide(), n && (U?.hide(), U?.setIgnoreMouseEvents(!0, { forward: !0 })), G = !1, q?.suspendVideoOverlay();
+	let t = !!(U && !U.isDestroyed() && U.isVisible()), n = !!(W && !W.isDestroyed() && W.isVisible());
+	t && U?.hide(), n && (W?.hide(), W?.setIgnoreMouseEvents(!0, { forward: !0 })), K = !1, J?.suspendVideoOverlay();
 	try {
-		return V && !V.isDestroyed() && V.focus(), await e();
+		return H && !H.isDestroyed() && H.focus(), await e();
 	} finally {
-		q?.resumeVideoOverlay(), ln(t);
+		J?.resumeVideoOverlay(), hn(t);
 	}
 }
-function ln(e) {
-	!e || !H || H.isDestroyed() || (J = !0, !(!V || V.isDestroyed() || !V.isFocused()) && (H.showInactive(), H.setIgnoreMouseEvents(!0, { forward: !0 }), q?.raiseControlsOverlay(), V.webContents.send("controls:request-state-relayed"), V.webContents.send("vlc:parent-geometry-changed")));
+function hn(e) {
+	!e || !U || U.isDestroyed() || (Y = !0, !(!H || H.isDestroyed() || !H.isFocused()) && (U.showInactive(), J?.raiseControlsOverlay(), H.webContents.send("controls:request-state-relayed"), H.webContents.send("vlc:parent-geometry-changed")));
 }
-function un() {
-	H && !H.isDestroyed() && (H.setAlwaysOnTop(!1), H.hide(), H.webContents.send("controls:suspended-relayed")), U && !U.isDestroyed() && (G = !1, U.setAlwaysOnTop(!1), U.webContents.send("files-menu:hide-relayed"), U.hide(), U.setIgnoreMouseEvents(!0, { forward: !0 })), q?.suspendVideoOverlay();
+function gn() {
+	U && !U.isDestroyed() && (U.setAlwaysOnTop(!1), U.hide(), U.webContents.send("controls:suspended-relayed")), W && !W.isDestroyed() && (K = !1, W.setAlwaysOnTop(!1), W.webContents.send("files-menu:hide-relayed"), W.hide(), W.setIgnoreMouseEvents(!0, { forward: !0 })), J?.suspendVideoOverlay();
 }
-function dn() {
-	if (!V || V.isDestroyed() || V.isMinimized() || !V.isVisible()) return !1;
-	if (V.isFocused()) return !0;
+function _n() {
+	if (!H || H.isDestroyed() || H.isMinimized() || !H.isVisible()) return !1;
+	if (H.isFocused()) return !0;
 	let e = t.getFocusedWindow();
-	return e === H || e === U;
+	return e === U || e === W;
 }
-function fn() {
+function vn() {
 	let e = () => {
-		if (dn()) {
-			t.getFocusedWindow() === U && H && !H.isDestroyed() && (H.setAlwaysOnTop(!1), H.hide(), H.webContents.send("controls:suspended-relayed"));
+		if (_n()) {
+			t.getFocusedWindow() === W && U && !U.isDestroyed() && (U.setAlwaysOnTop(!1), U.hide(), U.webContents.send("controls:suspended-relayed"));
 			return;
 		}
-		un();
+		gn();
 	};
 	setTimeout(e, 50), setTimeout(e, 200);
 }
-var pn = null;
-function mn() {
-	pn ||= setInterval(() => {
-		!H || H.isDestroyed() || !H.isVisible() || dn() || un();
+var yn = null;
+function bn() {
+	yn ||= setInterval(() => {
+		!U || U.isDestroyed() || !U.isVisible() || _n() || gn();
 	}, 300);
 }
-function hn() {
-	!V || V.isDestroyed() || V.isMinimized() || !V.isVisible() || !V.isFocused() || (q?.resumeVideoOverlay(), J && H && !H.isDestroyed() && (H.setAlwaysOnTop(!0, "pop-up-menu"), H.showInactive(), H.setIgnoreMouseEvents(!0, { forward: !0 }), q?.raiseControlsOverlay(), V.webContents.send("controls:request-state-relayed")));
+function xn() {
+	!H || H.isDestroyed() || H.isMinimized() || !H.isVisible() || !H.isFocused() || (J?.resumeVideoOverlay(), Y && U && !U.isDestroyed() && (U.setAlwaysOnTop(!0, "pop-up-menu"), U.showInactive(), J?.raiseControlsOverlay(), H.webContents.send("controls:request-state-relayed")));
 }
 var Z = null;
-function gn() {
+function Sn() {
 	return d.join(r.getPath("userData"), "settings.json");
 }
-function _n() {
+function Cn() {
 	return d.join(r.getPath("userData"), "memory.json");
 }
-async function Q(e) {
-	return Z = e, await f.mkdir(r.getPath("userData"), { recursive: !0 }), await f.writeFile(gn(), `${JSON.stringify({
+async function wn(e) {
+	return Z = e, await p.mkdir(r.getPath("userData"), { recursive: !0 }), await p.writeFile(Sn(), `${JSON.stringify({
 		settings: e.settings,
 		memory: e.memory
 	}, null, 2)}\n`, "utf8"), e;
 }
-async function $() {
+async function Q() {
 	if (Z) return Z;
 	let e = null;
 	try {
-		e = JSON.parse(await f.readFile(gn(), "utf8"));
+		e = JSON.parse(await p.readFile(Sn(), "utf8"));
 	} catch {
 		e = null;
 	}
 	if (e && typeof e == "object" && ("settings" in e || "memory" in e)) {
 		let t = e, n = {
-			settings: nt(t.settings),
-			memory: await O(t.memory)
+			settings: j(t.settings),
+			memory: await k(t.memory)
 		};
 		return Z = n, n;
 	}
-	let t = e ? nt(e) : k, n;
+	let t = e ? j(e) : A, n;
 	try {
-		n = await O(JSON.parse(await f.readFile(_n(), "utf8")));
+		n = await k(JSON.parse(await p.readFile(Cn(), "utf8")));
 	} catch {
-		n = await O(Xe);
+		n = await k(Ye);
 	}
-	let r = await Q({
+	let r = await wn({
 		settings: t,
 		memory: n
 	});
 	try {
-		await f.unlink(_n());
+		await p.unlink(Cn());
 	} catch {}
 	return r;
 }
-async function vn() {
-	return (await $()).memory.lastOpenDirectory;
+async function Tn() {
+	return (await Q()).memory.lastOpenDirectory;
 }
-function yn() {
-	a.handle("vlc:load", async (e, t) => q ? q.loadIfNeeded(t) : {
+function En() {
+	a.handle("vlc:load", async (e, t) => J ? J.loadIfNeeded(t) : {
 		ok: !1,
 		error: "VLC player is not ready",
 		reloaded: !0
 	}), a.handle("vlc:play", async () => {
-		q?.play();
+		J?.play();
 	}), a.handle("vlc:pause", async () => {
-		q?.pause();
+		J?.pause();
 	}), a.handle("vlc:stop", async () => {
-		q?.stop();
+		J?.stop();
 	}), a.handle("vlc:seek", async (e, t) => {
-		q?.seek(t);
+		J?.seek(t);
 	}), a.handle("vlc:set-volume", async (e, t) => {
-		q?.setVolume(t);
+		J?.setVolume(t);
 	}), a.handle("vlc:set-volume-muted", async (e, t) => {
-		q?.setVolumeMuted(t);
+		J?.setVolumeMuted(t);
 	}), a.handle("vlc:set-rate", async (e, t) => {
-		q?.setRate(t);
+		J?.setRate(t);
 	}), a.handle("vlc:set-audio-effects", async (e, t) => {
-		q?.setAudioEffects(t);
+		J?.setAudioEffects(t);
 	}), a.handle("vlc:set-video-effects", async (e, t) => {
-		q?.setVideoEffects(t);
+		J?.setVideoEffects(t);
 	}), a.handle("vlc:set-video-visible", async (e, t) => {
-		q?.setVideoVisible(t);
+		J?.setVideoVisible(t);
 	}), a.handle("vlc:suspend-video-overlay", async () => {
-		q?.suspendVideoOverlay();
+		J?.suspendVideoOverlay();
 	}), a.handle("vlc:resume-video-overlay", async () => {
-		q?.resumeVideoOverlay();
+		J?.resumeVideoOverlay();
 	}), a.handle("vlc:set-viewport", async (e, t) => {
-		q?.setViewport(t);
+		J?.setViewport(t);
 	}), a.on("vlc:set-viewport-sync", (e, t) => {
-		q?.setViewport(t);
+		J?.setViewport(t);
 	}), a.handle("vlc:hide-video-overlay", async () => {
-		q?.hideVideoOverlay();
+		J?.hideVideoOverlay();
 	}), a.on("vlc:hide-video-overlay-sync", () => {
-		q?.hideVideoOverlay();
-	}), a.handle("vlc:prioritize-ui-overlay", async () => q ? q.prioritizeUiOverlay() : null), a.handle("vlc:release-ui-overlay", async () => {
-		q?.releaseUiOverlay();
-	}), a.handle("vlc:start-recording", async (e, t) => q ? q.startRecording(t) : {
+		J?.hideVideoOverlay();
+	}), a.handle("vlc:prioritize-ui-overlay", async () => J ? J.prioritizeUiOverlay() : null), a.handle("vlc:release-ui-overlay", async () => {
+		J?.releaseUiOverlay();
+	}), a.handle("vlc:start-recording", async (e, t) => J ? J.startRecording(t) : {
 		ok: !1,
 		error: "VLC player is not ready"
 	}), a.handle("vlc:stop-recording", async () => {
-		q?.stopRecording();
-	}), a.handle("vlc:get-state", async () => q?.getState() ?? {
+		J?.stopRecording();
+	}), a.handle("vlc:get-state", async () => J?.getState() ?? {
 		playing: !1,
 		paused: !1,
 		ended: !1,
@@ -1847,28 +1959,28 @@ function yn() {
 		durationMs: 0
 	});
 }
-function bn() {
+function Dn() {
 	a.handle("media-probe:metadata", async (e, t) => {
 		try {
-			return await R().extractMetadata(t);
+			return await un().extractMetadata(t);
 		} catch (e) {
 			return console.warn("media-probe:metadata failed:", e), null;
 		}
 	}), a.handle("media-probe:tracks", async (e, t) => {
 		try {
-			return await R().extractTracks(t);
+			return await un().extractTracks(t);
 		} catch (e) {
 			return console.warn("media-probe:tracks failed:", e), [];
 		}
 	}), a.handle("media-probe:thumbnail", async (e, t, n) => {
 		try {
-			return await R().extractThumbnail(t, n ?? {});
+			return await un().extractThumbnail(t, n ?? {});
 		} catch (e) {
 			return console.warn("media-probe:thumbnail failed:", e), null;
 		}
 	});
 }
-function xn() {
+function On() {
 	let e = process.platform === "win32" ? [
 		"public/icon.ico",
 		"dist/icon.ico",
@@ -1885,7 +1997,7 @@ function xn() {
 		"icon.ico"
 	], t = [
 		r.getAppPath(),
-		d.join(z, ".."),
+		d.join(B, ".."),
 		process.resourcesPath
 	];
 	for (let n of t) for (let t of e) {
@@ -1905,42 +2017,42 @@ function xn() {
 		});
 	}
 }
-function Sn(e) {
+function kn(e) {
 	try {
-		q?.destroy(), q = new Mt(), q.attachParent(e), q.setOnEnded(() => {
-			V?.webContents.send("vlc:ended");
+		J?.destroy(), J = new Ft(), J.attachParent(e), J.setOnEnded(() => {
+			H?.webContents.send("vlc:ended");
 		});
 	} catch (e) {
-		console.error("Failed to initialize libVLC:", e), q = null;
+		console.error("Failed to initialize libVLC:", e), J = null;
 	}
 }
-function Cn() {
-	V = new t({
+function An() {
+	H = new t({
 		width: 1280,
 		height: 800,
 		minWidth: 960,
 		minHeight: 600,
 		show: !1,
-		icon: xn(),
+		icon: On(),
 		backgroundColor: "#0b1020",
 		webPreferences: {
-			preload: d.join(z, "preload.cjs"),
+			preload: d.join(B, "preload.cjs"),
 			contextIsolation: !0,
 			nodeIntegration: !1,
 			sandbox: !1,
 			backgroundThrottling: !1
 		}
-	}), V.once("ready-to-show", () => {
-		V?.show();
-	}), V.loadFile(B), Sn(V), V.on("blur", fn), V.on("focus", hn), V.on("hide", fn), V.on("show", hn), V.on("minimize", () => {
-		un();
-	}), V.on("restore", hn), on && V.webContents.openDevTools({ mode: "detach" }), V.on("closed", () => {
-		H && !H.isDestroyed() && H.destroy(), H = null, U && !U.isDestroyed() && U.destroy(), U = null, q?.destroy(), q = null, V = null;
+	}), H.once("ready-to-show", () => {
+		H?.show();
+	}), H.loadFile(V), kn(H), H.on("blur", vn), H.on("focus", xn), H.on("hide", vn), H.on("show", xn), H.on("minimize", () => {
+		gn();
+	}), H.on("restore", xn), dn && H.webContents.openDevTools({ mode: "detach" }), H.on("closed", () => {
+		U && !U.isDestroyed() && U.destroy(), U = null, W && !W.isDestroyed() && W.destroy(), W = null, J?.destroy(), J = null, H = null;
 	});
 }
-function wn() {
-	return !V || V.isDestroyed() ? null : H && !H.isDestroyed() ? H : (H = new t({
-		parent: V,
+function jn() {
+	return !H || H.isDestroyed() ? null : U && !U.isDestroyed() ? U : (U = new t({
+		parent: H,
 		frame: !1,
 		transparent: !0,
 		show: !1,
@@ -1955,19 +2067,19 @@ function wn() {
 		hasShadow: !1,
 		backgroundColor: "#00000000",
 		webPreferences: {
-			preload: d.join(z, "preload.cjs"),
+			preload: d.join(B, "preload.cjs"),
 			contextIsolation: !0,
 			nodeIntegration: !1,
 			sandbox: !1,
 			backgroundThrottling: !1
 		}
-	}), H.setIgnoreMouseEvents(!0, { forward: !0 }), H.setAlwaysOnTop(!0, "pop-up-menu"), H.loadFile(B, { hash: "/controls-overlay" }), q?.setControlsOverlayWindow(H), H.on("closed", () => {
-		q?.setControlsOverlayWindow(null), H = null;
-	}), H);
+	}), U.setIgnoreMouseEvents(!0, { forward: !0 }), U.setAlwaysOnTop(!0, "pop-up-menu"), U.loadFile(V, { hash: "/controls-overlay" }), J?.setControlsOverlayWindow(U), U.on("closed", () => {
+		J?.setControlsOverlayWindow(null), U = null;
+	}), U);
 }
-function Tn() {
-	return !V || V.isDestroyed() ? null : U && !U.isDestroyed() ? U : (U = new t({
-		parent: V,
+function Mn() {
+	return !H || H.isDestroyed() ? null : W && !W.isDestroyed() ? W : (W = new t({
+		parent: H,
 		frame: !1,
 		transparent: !0,
 		show: !1,
@@ -1980,136 +2092,136 @@ function Tn() {
 		hasShadow: !1,
 		backgroundColor: "#00000000",
 		webPreferences: {
-			preload: d.join(z, "preload.cjs"),
+			preload: d.join(B, "preload.cjs"),
 			contextIsolation: !0,
 			nodeIntegration: !1,
 			sandbox: !1,
 			backgroundThrottling: !1
 		}
-	}), U.setIgnoreMouseEvents(!0, { forward: !0 }), U.setAlwaysOnTop(!0, "screen-saver"), U.loadFile(B, { hash: "/files-menu-overlay" }), q?.setFilesMenuOverlayWindow(U), U.webContents.on("did-start-loading", () => {
-		W = !1;
-	}), U.on("closed", () => {
-		q?.setFilesMenuOverlayWindow(null), U = null;
-	}), U);
+	}), W.setIgnoreMouseEvents(!0, { forward: !0 }), W.setAlwaysOnTop(!0, "screen-saver"), W.loadFile(V, { hash: "/files-menu-overlay" }), J?.setFilesMenuOverlayWindow(W), W.webContents.on("did-start-loading", () => {
+		G = !1;
+	}), W.on("closed", () => {
+		J?.setFilesMenuOverlayWindow(null), W = null;
+	}), W);
 }
-function En() {
-	!on || K || (K = u.watch(B, () => {
-		V?.webContents.reload(), H && !H.isDestroyed() && H.webContents.reload(), U && !U.isDestroyed() && U.webContents.reload();
+function Nn() {
+	!dn || q || (q = u.watch(V, () => {
+		H?.webContents.reload(), U && !U.isDestroyed() && U.webContents.reload(), W && !W.isDestroyed() && W.webContents.reload();
 	}));
 }
-a.handle("updates:get-version", () => S()), a.handle("updates:check", async () => pe()), a.handle("updates:open-download", async (e, t) => typeof t == "string" ? me(t) : !1), a.handle("updates:install", async (e, t) => typeof t == "string" ? he(t, (t) => {
+a.handle("updates:get-version", () => C()), a.handle("updates:check", async () => fe()), a.handle("updates:open-download", async (e, t) => typeof t == "string" ? pe(t) : !1), a.handle("updates:install", async (e, t) => typeof t == "string" ? me(t, (t) => {
 	e.sender.isDestroyed() || e.sender.send("updates:download-progress", t);
 }) : {
 	ok: !1,
 	message: "Invalid download URL"
 }), a.handle("app:get-launch-files", () => {
-	let e = Y;
-	return Y = [], e;
-}), a.handle("settings:get", async () => (await $()).settings);
-function Dn(e) {
+	let e = pn;
+	return pn = [], e;
+}), a.handle("settings:get", async () => (await Q()).settings);
+function Pn(e) {
 	for (let t of [
-		V,
 		H,
-		U
+		U,
+		W
 	]) t && !t.isDestroyed() && t.webContents.send("settings:changed-relayed", e);
 }
 a.handle("settings:save", async (e, t) => {
-	let n = await $(), r = nt(t);
-	return await Q({
+	let n = await Q(), r = j(t);
+	return await wn({
 		...n,
 		settings: r
-	}), Dn(r), r;
-}), a.handle("memory:get", async () => Qe((await $()).memory)), a.handle("memory:save", async (e, t) => {
-	let n = await $(), r = await O(t);
-	return await Q({
+	}), Pn(r), r;
+}), a.handle("memory:get", async () => Ze((await Q()).memory)), a.handle("memory:save", async (e, t) => {
+	let n = await Q(), r = await k(t);
+	return await wn({
 		...n,
 		memory: r
 	}), r;
 });
-function On() {
-	if (!U || U.isDestroyed()) {
-		G = !1;
+function $() {
+	if (!W || W.isDestroyed()) {
+		K = !1;
 		return;
 	}
-	G = !1, U.webContents.send("files-menu:show-relayed", sn), q?.raiseFilesMenuOverlay();
+	K = !1, W.webContents.send("files-menu:show-relayed", fn), J?.raiseFilesMenuOverlay();
 }
 a.on("files-menu:ready", () => {
-	W = !0, G && On();
+	G = !0, K && $();
 }), a.on("files-menu:show", (e, t, n) => {
-	let r = Tn();
-	if (!r || !V || V.isDestroyed()) return;
-	sn = n ?? null;
-	let i = V.getContentBounds();
+	let r = Mn();
+	if (!r || !H || H.isDestroyed()) return;
+	fn = n ?? null;
+	let i = H.getContentBounds();
 	if (r.setBounds({
 		x: Math.round(i.x + t.x),
 		y: Math.round(i.y + t.y),
 		width: Math.max(1, Math.round(t.width)),
 		height: Math.max(1, Math.round(t.height))
-	}), r.setIgnoreMouseEvents(!1), r.isVisible() || r.showInactive(), G = !0, W && !r.webContents.isLoading()) {
-		On();
+	}), r.setIgnoreMouseEvents(!1), r.isVisible() || r.showInactive(), K = !0, G && !r.webContents.isLoading()) {
+		$();
 		return;
 	}
 	r.webContents.isLoading() && r.webContents.once("did-finish-load", () => {
-		W && On();
+		G && $();
 	});
 }), a.on("files-menu:hide", () => {
-	G = !1, U && !U.isDestroyed() && (U.webContents.send("files-menu:hide-relayed"), U.hide(), U.setIgnoreMouseEvents(!0, { forward: !0 }));
+	K = !1, W && !W.isDestroyed() && (W.webContents.send("files-menu:hide-relayed"), W.hide(), W.setIgnoreMouseEvents(!0, { forward: !0 }));
 }), a.on("files-menu:action", (e, t) => {
-	V && !V.isDestroyed() && V.webContents.send("files-menu:action-relayed", t), G = !1, U && !U.isDestroyed() && (U.webContents.send("files-menu:hide-relayed"), U.hide(), U.setIgnoreMouseEvents(!0, { forward: !0 }));
+	H && !H.isDestroyed() && H.webContents.send("files-menu:action-relayed", t), K = !1, W && !W.isDestroyed() && (W.webContents.send("files-menu:hide-relayed"), W.hide(), W.setIgnoreMouseEvents(!0, { forward: !0 }));
 }), a.on("files-menu:select", (e, t) => {
-	V && !V.isDestroyed() && V.webContents.send("files-menu:select-relayed", t);
+	H && !H.isDestroyed() && H.webContents.send("files-menu:select-relayed", t);
 }), a.on("files-menu:close", () => {
-	V && !V.isDestroyed() && V.webContents.send("files-menu:close-relayed"), G = !1, U && !U.isDestroyed() && (U.webContents.send("files-menu:hide-relayed"), U.hide(), U.setIgnoreMouseEvents(!0, { forward: !0 }));
+	H && !H.isDestroyed() && H.webContents.send("files-menu:close-relayed"), K = !1, W && !W.isDestroyed() && (W.webContents.send("files-menu:hide-relayed"), W.hide(), W.setIgnoreMouseEvents(!0, { forward: !0 }));
 }), a.on("controls:set-bounds", (e, t) => {
-	let n = wn();
-	if (!n || !V || V.isDestroyed()) return;
-	J = !0;
-	let r = V.getContentBounds();
+	let n = jn();
+	if (!n || !H || H.isDestroyed()) return;
+	Y = !0;
+	let r = H.getContentBounds();
 	n.setBounds({
 		x: Math.round(r.x + t.x),
 		y: Math.round(r.y + t.y),
 		width: Math.max(1, Math.round(t.width)),
 		height: Math.max(1, Math.round(t.height))
-	}), V.isFocused() && (n.isVisible() || (n.showInactive(), n.setIgnoreMouseEvents(!0, { forward: !0 }), n.webContents.send("controls:suspended-relayed")), q?.raiseControlsOverlay());
+	}), H.isFocused() && (n.isVisible() || n.showInactive(), J?.raiseControlsOverlay());
 });
-function kn() {
-	if (!H || H.isDestroyed() || !H.isVisible()) return null;
-	let e = c.getCursorScreenPoint(), t = H.getBounds(), n = e.x - t.x, r = e.y - t.y;
+function Fn() {
+	if (!U || U.isDestroyed() || !U.isVisible()) return null;
+	let e = c.getCursorScreenPoint(), t = U.getBounds(), n = e.x - t.x, r = e.y - t.y;
 	return {
 		x: n,
 		y: r,
 		inside: n >= 0 && r >= 0 && n <= t.width && r <= t.height
 	};
 }
-a.handle("controls:cursor-point", () => kn()), a.on("controls:raise", () => {
-	q?.raiseControlsOverlay();
+a.handle("controls:cursor-point", () => Fn()), a.on("controls:raise", () => {
+	J?.raiseControlsOverlay();
 }), a.on("controls:hide", () => {
-	J = !1, H && !H.isDestroyed() && (H.hide(), H.webContents.send("controls:suspended-relayed"));
+	Y = !1, U && !U.isDestroyed() && (U.hide(), U.webContents.send("controls:suspended-relayed"));
 }), a.on("controls:set-interactive", (e, t) => {
-	!H || H.isDestroyed() || (t ? (H.setIgnoreMouseEvents(!1), q?.raiseControlsOverlay()) : (H.setIgnoreMouseEvents(!0, { forward: !0 }), q?.raiseControlsOverlay()));
+	!U || U.isDestroyed() || (t ? (U.setIgnoreMouseEvents(!1), J?.raiseControlsOverlay()) : (U.setIgnoreMouseEvents(!0, { forward: !0 }), J?.raiseControlsOverlay()));
 }), a.on("controls:state", (e, t) => {
-	H && !H.isDestroyed() && (H.webContents.send("controls:state-relayed", t), H.isVisible() && q?.raiseControlsOverlay());
+	U && !U.isDestroyed() && (U.webContents.send("controls:state-relayed", t), U.isVisible() && J?.raiseControlsOverlay());
 }), a.on("controls:action", (e, t) => {
-	V && !V.isDestroyed() && V.webContents.send("controls:action-relayed", t);
+	H && !H.isDestroyed() && H.webContents.send("controls:action-relayed", t);
 }), a.on("controls:ready", () => {
-	V && !V.isDestroyed() && V.webContents.send("controls:request-state-relayed");
+	H && !H.isDestroyed() && H.webContents.send("controls:request-state-relayed");
 }), a.handle("files:openSingle", async (e, t) => {
-	if (!Ae(t) || !V || V.isDestroyed()) return null;
-	let n = await vn();
-	return X(() => Pe(V, t, n));
+	if (!E(t) || !H || H.isDestroyed()) return null;
+	let n = await Tn();
+	return X(() => Ne(H, t, n));
 }), a.handle("files:openMultiple", async (e, t) => {
-	if (!Ae(t) || !V || V.isDestroyed()) return [];
-	let n = await vn();
-	return X(() => Fe(V, t, n));
+	if (!E(t) || !H || H.isDestroyed()) return [];
+	let n = await Tn();
+	return X(() => Pe(H, t, n));
 }), a.handle("files:openFolder", async (e, t) => {
-	if (!Ae(t) || !V || V.isDestroyed()) return [];
-	let n = await vn();
-	return X(() => Ie(V, t, n));
+	if (!E(t) || !H || H.isDestroyed()) return [];
+	let n = await Tn();
+	return X(() => Fe(H, t, n));
 }), a.handle("recording:choose-path", async (e, t, n) => {
-	if (!V || V.isDestroyed() || typeof t != "string" || typeof n != "string") return null;
+	if (!H || H.isDestroyed() || typeof t != "string" || typeof n != "string") return null;
 	let r = d.extname(n).replace(".", ""), a = d.extname(t).replace(".", ""), o = r || a, s = d.join(d.dirname(t), n);
 	return X(async () => {
-		let e = await i.showSaveDialog(V, {
+		let e = await i.showSaveDialog(H, {
 			defaultPath: s,
 			filters: o ? [{
 				name: o.toUpperCase(),
@@ -2118,16 +2230,16 @@ a.handle("controls:cursor-point", () => kn()), a.on("controls:raise", () => {
 		});
 		return e.canceled || !e.filePath ? null : e.filePath;
 	});
-}), cn && (r.whenReady().then(() => {
-	n.setApplicationMenu(null), mn(), r.on("browser-window-blur", (e, t) => {
-		t === V && fn();
-	}), yn(), bn(), Cn(), En(), r.on("activate", () => {
-		t.getAllWindows().length === 0 && Cn();
+}), mn && (r.whenReady().then(() => {
+	n.setApplicationMenu(null), bn(), r.on("browser-window-blur", (e, t) => {
+		t === H && vn();
+	}), En(), Dn(), An(), Nn(), r.on("activate", () => {
+		t.getAllWindows().length === 0 && An();
 	});
 }), r.on("window-all-closed", () => {
-	K?.close(), K = null, process.platform !== "darwin" && r.quit();
+	q?.close(), q = null, process.platform !== "darwin" && r.quit();
 }), r.on("before-quit", () => {
-	q?.destroy(), q = null;
+	J?.destroy(), J = null;
 }));
 //#endregion
 export {};

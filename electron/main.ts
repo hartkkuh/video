@@ -124,7 +124,6 @@ function restoreControlsOverlayAfterFileDialog(hadVisibleControls: boolean) {
   }
 
   controlsWindow.showInactive()
-  controlsWindow.setIgnoreMouseEvents(true, { forward: true })
   vlcPlayer?.raiseControlsOverlay()
   mainWindow.webContents.send('controls:request-state-relayed')
   mainWindow.webContents.send('vlc:parent-geometry-changed')
@@ -235,7 +234,6 @@ function restoreFloatingOverlaysIfNeeded() {
   if (controlsOverlayWanted && controlsWindow && !controlsWindow.isDestroyed()) {
     controlsWindow.setAlwaysOnTop(true, 'pop-up-menu')
     controlsWindow.showInactive()
-    controlsWindow.setIgnoreMouseEvents(true, { forward: true })
     vlcPlayer?.raiseControlsOverlay()
     mainWindow.webContents.send('controls:request-state-relayed')
   }
@@ -872,8 +870,6 @@ ipcMain.on('controls:set-bounds', (_event, bounds: ControlsOverlayBounds) => {
 
   if (!window.isVisible()) {
     window.showInactive()
-    window.setIgnoreMouseEvents(true, { forward: true })
-    window.webContents.send('controls:suspended-relayed')
   }
 
   vlcPlayer?.raiseControlsOverlay()

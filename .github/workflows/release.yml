@@ -51,12 +51,15 @@ jobs:
       - name: Create or update GitHub Release
         uses: softprops/action-gh-release@v2
         with:
+          repository: hartkkuh/FMP-Media-Player
+          token: ${{ secrets.RELEASE_TOKEN }}
           tag_name: v${{ steps.version.outputs.version }}
           name: FMP Video Player ${{ steps.version.outputs.version }}
+          body_path: body.txt
           draft: false
           prerelease: false
           make_latest: true
-          generate_release_notes: true
+          generate_release_notes: false
           fail_on_unmatched_files: true
           files: |
             release/FMP Video Player-Setup-*.exe

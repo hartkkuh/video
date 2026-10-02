@@ -32,7 +32,8 @@ import {
 	type VlcAudioEffects,
 	type VlcVideoEffects,
 } from './vlc-effects.js'
-import { HWND_TOP, SWP_NOACTIVATE, SWP_NOMOVE, SWP_NOSIZE, getWin32User32, hwndFromBuffer, hwndToNumber } from './win32-api.js'
+import { getWin32User32, hwndFromBuffer } from './win32-api.js'
+import { Win32VideoHost } from './win32-video-host.js'
 import { VLC_VIDEO_EXTENSIONS } from '../shared/vlc-media-extensions.js'
 
 export type { VlcAudioEffects, VlcVideoEffects } from './vlc-effects.js'
@@ -159,8 +160,9 @@ export class VlcPlayerService {
 	private mediaPlayer: unknown = null
 	private media: unknown = null
 	private equalizer: unknown = null
-	private videoWindow: BrowserWindow | null = null
+	private videoHost = new Win32VideoHost()
 	private parentWindow: BrowserWindow | null = null
+	private embedWatch: ReturnType<typeof setInterval> | null = null
 	private videoVisible = false
 	private videoOverlaySuspended = false
 	private endedNotified = false
@@ -196,6 +198,8 @@ export class VlcPlayerService {
 	private libvlc_media_player_release: (player: unknown) => void
 	private libvlc_media_player_set_media: (player: unknown, media: unknown) => void
 	private libvlc_media_player_set_hwnd: (player: unknown, hwnd: bigint) => void
+	private libvlc_video_set_mouse_input: (player: unknown, on: number) => void
+	private libvlc_video_set_key_input: (player: unknown, on: number) => void
 	private libvlc_media_player_play: (player: unknown) => number
 	private libvlc_media_player_set_pause: (player: unknown, doPause: number) => void
 	private libvlc_media_player_stop: (player: unknown) => void
@@ -237,7 +241,9 @@ export class VlcPlayerService {
 		this.libvlc_media_player_new = lib.func('libvlc_media_player_new', 'void *', ['void *'])
 		this.libvlc_media_player_release = lib.func('libvlc_media_player_release', 'void', ['void *'])
 		this.libvlc_media_player_set_media = lib.func('libvlc_media_player_set_media', 'void', ['void *', 'void *'])
-		this.libvlc_media_player_set_hwnd = lib.func('libvlc_media_player_set_hwnd', 'void', ['void *', 'int64'])
+		this.libvlc_media_player_set_hwnd = lib.func('libvlc_media_player_set_hwnd', 'void', ['void *', 'void *'])
+		this.libvlc_video_set_mouse_input = lib.func('libvlc_video_set_mouse_input', 'void', ['void *', 'uint'])
+		this.libvlc_video_set_key_input = lib.func('libvlc_video_set_key_input', 'void', ['void *', 'uint'])
 		this.libvlc_media_player_play = lib.func('libvlc_media_player_play', 'int', ['void *'])
 		this.libvlc_media_player_set_pause = lib.func('libvlc_media_player_set_pause', 'void', ['void *', 'int'])
 		this.libvlc_media_player_stop = lib.func('libvlc_media_player_stop', 'void', ['void *'])
@@ -256,8 +262,16 @@ export class VlcPlayerService {
 		this.libvlc_video_set_adjust_float = lib.func('libvlc_video_set_adjust_float', 'void', ['void *', 'uint', 'float'])
 		this.libvlc_video_take_snapshot = lib.func('libvlc_video_take_snapshot', 'int', ['void *', 'uint', 'str', 'uint', 'uint'])
 
-		this.instance = this.libvlc_new(0, null)
+		// A bare libvlc_new() lets the vout open a decorated top-level window
+		// whenever the drawable is missing or hidden for a frame.
+		this.instance = this.libvlc_new_args(2, ['--no-video-title-show', '--no-video-deco'])
+		if (!this.instance) {
+			this.instance = this.libvlc_new(0, null)
+		}
+
 		this.mediaPlayer = this.libvlc_media_player_new(this.instance)
+		this.libvlc_video_set_mouse_input(this.mediaPlayer, 0)
+		this.libvlc_video_set_key_input(this.mediaPlayer, 0)
 	}
 
 	attachParent(parentWindow: BrowserWindow) {
@@ -289,6 +303,8 @@ export class VlcPlayerService {
 
 		parentWindow.on('minimize', this.parentMinimizeHandler)
 		parentWindow.on('restore', this.parentRestoreHandler)
+		this.placeVideoHost()
+		this.ensureEmbedWatch()
 	}
 
 	async prioritizeUiOverlay() {
@@ -424,8 +440,10 @@ export class VlcPlayerService {
 
 	play() {
 		this.endedNotified = false
+		this.bindVideoDrawable()
 		this.prepareVideoOutput()
 		this.libvlc_media_player_play(this.mediaPlayer)
+		this.claimEmbeddedVideo()
 		this.refreshEffectsAfterPipeline()
 		this.syncRecordingTransport('play')
 	}
@@ -682,13 +700,10 @@ export class VlcPlayerService {
 
 	destroy() {
 		this.stop()
+		this.stopEmbedWatch()
 		this.hideVideoWindow()
 		this.detachParentListeners()
-
-		if (this.videoWindow && !this.videoWindow.isDestroyed()) {
-			this.videoWindow.destroy()
-			this.videoWindow = null
-		}
+		this.videoHost.destroy()
 
 		this.teardownRecordingPlayer()
 
@@ -884,8 +899,10 @@ export class VlcPlayerService {
 		}
 
 		if (shouldResume) {
+			this.bindVideoDrawable()
 			this.prepareVideoOutput()
 			this.libvlc_media_player_play(this.mediaPlayer)
+			this.claimEmbeddedVideo()
 			this.refreshEffectsAfterPipeline()
 			return
 		}
@@ -929,65 +946,146 @@ export class VlcPlayerService {
 			return
 		}
 
-		const contentBounds = this.parentWindow.getContentBounds()
-		const x = Math.round(contentBounds.x + bounds.x)
-		const y = Math.round(contentBounds.y + bounds.y)
-		const width = Math.max(1, Math.round(bounds.width))
-		const height = Math.max(1, Math.round(bounds.height))
+		if (process.platform !== 'win32' || !this.win32) {
+			return
+		}
 
+		// Viewport x/y are DIP, relative to the page. A WS_CHILD is positioned
+		// in physical pixels relative to the parent client area.
+		const client = this.viewportToClientPixels(bounds)
 		const last = this.lastAppliedScreenBounds
-		if (last && last.x === x && last.y === y && last.width === width && last.height === height) {
+		if (
+			last &&
+			last.x === client.x &&
+			last.y === client.y &&
+			last.width === client.width &&
+			last.height === client.height
+		) {
+			this.videoHost.show()
+			this.raiseControlsOverlay()
 			return
 		}
 
-		this.lastAppliedScreenBounds = { x, y, width, height }
-
-		const videoWindow = this.ensureVideoWindow()
-		if (!videoWindow) {
-			return
-		}
-
-		const wasHidden = !videoWindow.isVisible()
-
-		if (process.platform === 'win32' && this.win32) {
-			// getContentBounds and getBoundingClientRect report DIP (CSS) pixels,
-			// but SetWindowPos expects physical pixels. Convert so the video lines
-			// up with the React media area when the display scale is not 100%.
-			const physical = screen.dipToScreenRect(this.parentWindow, {
-				x,
-				y,
-				width,
-				height,
-			})
-			const videoHwnd = hwndToNumber(videoWindow.getNativeWindowHandle())
-			this.win32.positionWindow(
-				videoHwnd,
-				physical.x,
-				physical.y,
-				physical.width,
-				physical.height,
-				wasHidden,
-			)
-		} else {
-			videoWindow.setBounds({ x, y, width, height })
-		}
+		this.lastAppliedScreenBounds = client
+		this.placeVideoHost(client)
 
 		if (this.uiOverlayPrioritized) {
 			this.hideVideoWindow()
 			return
 		}
 
-		if (wasHidden) {
-			const hwndBuffer = videoWindow.getNativeWindowHandle()
-			this.libvlc_media_player_set_hwnd(this.mediaPlayer, hwndFromBuffer(hwndBuffer))
+		this.videoHost.show()
+		this.claimEmbeddedVideo()
+		this.applyPendingEffects()
+		this.raiseControlsOverlay()
+	}
 
-			if (process.platform !== 'win32') {
-				videoWindow.showInactive()
+	private viewportToClientPixels(bounds: ViewportBounds) {
+		const parent = this.parentWindow
+		if (!parent) {
+			return {
+				x: Math.round(bounds.x),
+				y: Math.round(bounds.y),
+				width: Math.max(1, Math.round(bounds.width)),
+				height: Math.max(1, Math.round(bounds.height)),
 			}
-
-			this.applyPendingEffects()
-			this.sendVideoWindowAboveUi()
 		}
+
+		const contentBounds = parent.getContentBounds()
+		const screenRect = screen.dipToScreenRect(parent, {
+			x: Math.round(contentBounds.x + bounds.x),
+			y: Math.round(contentBounds.y + bounds.y),
+			width: Math.max(1, Math.round(bounds.width)),
+			height: Math.max(1, Math.round(bounds.height)),
+		})
+		const origin = screen.dipToScreenRect(parent, {
+			x: contentBounds.x,
+			y: contentBounds.y,
+			width: 1,
+			height: 1,
+		})
+
+		return {
+			x: screenRect.x - origin.x,
+			y: screenRect.y - origin.y,
+			width: Math.max(1, screenRect.width),
+			height: Math.max(1, screenRect.height),
+		}
+	}
+
+	private placeVideoHost(bounds?: { x: number; y: number; width: number; height: number }) {
+		if (!this.parentWindow || this.parentWindow.isDestroyed() || process.platform !== 'win32') {
+			return
+		}
+
+		const parentHwnd = hwndFromBuffer(this.parentWindow.getNativeWindowHandle())
+		const next = bounds ?? this.videoHost.currentBounds ?? { x: 0, y: 0, width: 1, height: 1 }
+		const hwnd = this.videoHost.ensure(parentHwnd, next)
+		if (!this.videoHost.isAttachedToVlc()) {
+			this.attachDrawable(hwnd)
+		}
+	}
+
+	private bindVideoDrawable(bounds?: { x: number; y: number; width: number; height: number }) {
+		this.placeVideoHost(bounds)
+		if (this.videoHost.handle) {
+			this.attachDrawable(this.videoHost.handle)
+		}
+	}
+
+	private attachDrawable(hwnd: bigint) {
+		this.libvlc_media_player_set_hwnd(this.mediaPlayer, hwnd)
+		this.libvlc_video_set_mouse_input(this.mediaPlayer, 0)
+		this.libvlc_video_set_key_input(this.mediaPlayer, 0)
+		this.videoHost.markAttachedToVlc()
+	}
+
+	private claimEmbeddedVideo() {
+		if (!this.win32) {
+			return
+		}
+
+		const bounds = this.videoHost.currentBounds
+		const hwnd = this.videoHost.handle
+		if (!bounds || !hwnd) {
+			return
+		}
+
+		const videoOnScreen =
+			this.videoVisible && !this.videoOverlaySuspended && !this.uiOverlayPrioritized
+
+		if (videoOnScreen) {
+			// Chromium's render child sits in the same parent and will cover a
+			// sibling unless the host is put back at the top of the child z-order.
+			this.videoHost.show()
+		}
+
+		const reparented = this.win32.reparentPopupsToHost(
+			'VLC video output',
+			hwnd,
+			bounds.width,
+			bounds.height,
+		)
+		if (reparented) {
+			this.raiseControlsOverlay()
+		}
+	}
+
+	private ensureEmbedWatch() {
+		if (this.embedWatch || process.platform !== 'win32') {
+			return
+		}
+
+		this.embedWatch = setInterval(() => this.claimEmbeddedVideo(), 400)
+	}
+
+	private stopEmbedWatch() {
+		if (!this.embedWatch) {
+			return
+		}
+
+		clearInterval(this.embedWatch)
+		this.embedWatch = null
 	}
 
 	private async takeVideoSnapshot() {
@@ -1004,22 +1102,6 @@ export class VlcPlayerService {
 			console.warn('Failed to capture VLC menu preview:', error)
 			return null
 		}
-	}
-
-	private sendVideoWindowAboveUi() {
-		if (!this.win32 || !this.videoWindow || this.videoWindow.isDestroyed()) {
-			return
-		}
-
-		const videoHwnd = hwndToNumber(this.videoWindow.getNativeWindowHandle())
-		this.win32.setWindowPosFlags(videoHwnd, HWND_TOP, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE)
-
-		if (!this.videoWindow.isDestroyed()) {
-			this.videoWindow.moveTop()
-		}
-
-		// Keep the floating controls overlay above the freshly raised video window.
-		this.raiseControlsOverlay()
 	}
 
 	private detachParentListeners() {
@@ -1051,48 +1133,8 @@ export class VlcPlayerService {
 		this.parentWindow = null
 	}
 
-	private ensureVideoWindow() {
-		if (!this.parentWindow) {
-			return null
-		}
-
-		if (!this.videoWindow || this.videoWindow.isDestroyed()) {
-			// resizable must stay true: when false, Windows applies min/max tracking
-			// size constraints that prevent SetWindowPos from resizing the window to
-			// match the React media div. The window is frameless, non-focusable and
-			// ignores the mouse, so the user still cannot resize it manually.
-			this.videoWindow = new BrowserWindow({
-				parent: this.parentWindow,
-				frame: false,
-				show: false,
-				skipTaskbar: true,
-				resizable: true,
-				minWidth: 1,
-				minHeight: 1,
-				focusable: false,
-				hasShadow: false,
-				thickFrame: false,
-				backgroundColor: '#000000',
-				webPreferences: {
-					nodeIntegration: false,
-					contextIsolation: true,
-				},
-			})
-
-			this.videoWindow.setIgnoreMouseEvents(true, { forward: true })
-
-			const hwndBuffer = this.videoWindow.getNativeWindowHandle()
-			this.libvlc_media_player_set_hwnd(this.mediaPlayer, hwndFromBuffer(hwndBuffer))
-		}
-
-		return this.videoWindow
-	}
-
 	private hideVideoWindow() {
 		this.lastAppliedScreenBounds = null
-
-		if (this.videoWindow && !this.videoWindow.isDestroyed()) {
-			this.videoWindow.hide()
-		}
+		this.videoHost.hide()
 	}
 }

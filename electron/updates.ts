@@ -15,7 +15,7 @@ import {
 
 const UPDATE_REPO = {
   owner: 'hartkkuh',
-  name: 'video',
+  name: 'FMP-Media-Player',
 } as const
 
 const CHECK_TIMEOUT_MS = 12_000
