@@ -43,6 +43,7 @@ export default function Navbar() {
   const location = useLocation()
   const navigate = useNavigate()
   const isSettingsPage = location.pathname === '/settings'
+  const isAboutPage = location.pathname === '/about'
 
   const [openMenu, setOpenMenu] = useState<OpenMenu>('none')
   const [expandedSubmenu, setExpandedSubmenu] = useState<ExpandedSubmenu>('none')
@@ -339,6 +340,19 @@ export default function Navbar() {
             {t('navbar.openFiles')}
           </button>
         </div>
+
+        <Link
+          to="/about"
+          className={`${styles.settingsButton} ${isAboutPage ? styles.settingsButtonActive : ''}`}
+          onClick={(event) => {
+            if (isAboutPage) {
+              event.preventDefault()
+              navigate('/player')
+            }
+          }}
+        >
+          {t('navbar.about')}
+        </Link>
 
         <Link
           to="/settings"

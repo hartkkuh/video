@@ -1,2 +1,1 @@
-Layer system stability improvements
-Improvements to the update system
+An "About" section has been added.

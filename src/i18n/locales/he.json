@@ -18,6 +18,7 @@
     "mediaFile": "פרטי קובץ",
     "mediaEncoding": "פרטי קידוד",
     "recording": "הקלטה",
+    "about": "אודות",
     "settings": "הגדרות"
   },
   "recording": {
@@ -80,6 +81,11 @@
     "controlsPositionBottomDescription": "בתחתית הווידאו — סרגל ההתקדמות מעל כפתורי הנגינה.",
     "controlsPositionTop": "למעלה",
     "controlsPositionTopDescription": "בראש הווידאו — כפתורי הנגינה מעל סרגל ההתקדמות.",
+    "back": "חזרה לנגן"
+  },
+  "about": {
+    "kicker": "אודות",
+    "description": "גרסת הנגן, ובדיקה ידנית אם יש גרסה חדשה יותר.",
     "back": "חזרה לנגן"
   },
   "updates": {

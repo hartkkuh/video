@@ -99,4 +99,4 @@ The build runs once on `windows-latest`. After that, two releases are published 
 
 The installed app checks for updates against the latest release of `hartkkuh/FMP-Media-Player`. The download URL in `update.json` is synced to that repository before every build (`scripts/sync-update-json.mjs`).
 
-Each release includes the installer `FMP Video Player-Setup-<version>.exe`, the `blockmap` file, and `latest.yml`.
+Each release includes the installer `FMP-Video-Player-Setup.exe`, the `blockmap` file, and `latest.yml`. The installer file name stays the same on every release.

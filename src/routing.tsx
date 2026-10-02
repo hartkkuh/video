@@ -1,4 +1,5 @@
 import { Navigate, Route, Routes } from "react-router-dom";
+import AboutPage from "./pages/about/about";
 import Player from "./pages/player/player";
 import SettingsPage from "./pages/settings/settings";
 import EffectsPage from "./pages/effects/effects";
@@ -12,6 +13,7 @@ export default function Routing() {
             <Route path="/effects" element={<EffectsPage />} />
             <Route path="/media" element={<MediaDetailsPage />} />
             <Route path="/settings" element={<SettingsPage />} />
+            <Route path="/about" element={<AboutPage />} />
         </Routes>
     );
 }

@@ -10,9 +10,8 @@ if (!version) {
   process.exit(1)
 }
 
-const productName = 'FMP Video Player'
-const setupFileName = `${productName}-Setup-${version}.exe`
-const downloadUrl = `https://github.com/hartkkuh/FMP-Media-Player/releases/download/v${version}/${encodeURIComponent(setupFileName)}`
+const setupFileName = 'FMP-Video-Player-Setup.exe'
+const downloadUrl = `https://github.com/hartkkuh/FMP-Media-Player/releases/download/v${version}/${setupFileName}`
 
 const updatePath = path.join(root, 'update.json')
 const previous = fs.existsSync(updatePath)

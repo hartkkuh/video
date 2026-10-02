@@ -18,6 +18,7 @@
     "mediaFile": "File details",
     "mediaEncoding": "Encoding details",
     "recording": "Recording",
+    "about": "About",
     "settings": "Settings"
   },
   "recording": {
@@ -80,6 +81,11 @@
     "controlsPositionBottomDescription": "At the bottom of the video — progress bar above the playback buttons.",
     "controlsPositionTop": "Top",
     "controlsPositionTopDescription": "At the top of the video — playback buttons above the progress bar.",
+    "back": "Back to player"
+  },
+  "about": {
+    "kicker": "About",
+    "description": "The player version, and a manual check for a newer release.",
     "back": "Back to player"
   },
   "updates": {

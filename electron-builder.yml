@@ -58,7 +58,7 @@ win:
     - target: nsis
       arch:
         - x64
-  artifactName: ${productName}-Setup-${version}.${ext}
+  artifactName: FMP-Video-Player-Setup.${ext}
 nsis:
   oneClick: false
   allowToChangeInstallationDirectory: true

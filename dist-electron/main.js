@@ -62,7 +62,7 @@ function se(e) {
 //#region electron/updates.ts
 var x = {
 	owner: "hartkkuh",
-	name: "video"
+	name: "FMP-Media-Player"
 }, ce = 12e3, le = 600 * 1e3, ue = ["main", "master"], S = "FMP Video Player", de = !1;
 function C() {
 	return r.getVersion();

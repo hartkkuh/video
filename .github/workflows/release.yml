@@ -105,6 +105,6 @@ jobs:
           generate_release_notes: false
           fail_on_unmatched_files: true
           files: |
-            release/FMP Video Player-Setup-*.exe
+            release/FMP-Video-Player-Setup.exe
             release/*.blockmap
             release/latest.yml
